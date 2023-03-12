@@ -76,4 +76,6 @@ internal class InstallerWindow : UIWindow
     {
         return ((FinishedWidget) mainWidget).GetFinishOptions();
     }
+
+    public bool SkipExitPrompt => mainWidget is FinishedWidget;
 }

@@ -80,9 +80,14 @@ internal class StepWidget : Widget
                 Program.RunExecutable();
             }
         }
-        else
+        else if (!Program.Window.ForceClose && !Program.Window.SkipExitPrompt)
         {
             Program.QuitWithConfirmation();
+        }
+        else
+        {
+            Program.Window.ForceClose = true;
+            Program.Window.Close();
         }
     }
 

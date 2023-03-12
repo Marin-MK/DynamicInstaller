@@ -164,7 +164,7 @@ public class FileDownloader
             if (createdFile) File.Delete(Filename);
             HadError = true;
         }
-        catch (Exception ex) when (ex is InvalidOperationException || ex is HttpRequestException || ex is TaskCanceledException || ex is UriFormatException)
+        catch (Exception ex) when (ex is InvalidOperationException || ex is HttpRequestException || ex is TaskCanceledException || ex is UriFormatException || ex is NotSupportedException)
         {
             Console.WriteLine("Error downloading: " + ex.Message + "\n" + ex.StackTrace);
             fileStream?.Dispose();

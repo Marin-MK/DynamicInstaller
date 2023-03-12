@@ -37,7 +37,7 @@ public class Program
         Window = new InstallerWindow();
         Window.OnClosing += x =>
         {
-            if (!Window.ForceClose)
+            if (!Window.ForceClose && !Window.SkipExitPrompt)
             {
                 x.Value = false;
                 QuitWithConfirmation();

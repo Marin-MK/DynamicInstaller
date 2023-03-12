@@ -56,29 +56,51 @@ internal class InstallationWidget : MainWidget
             progressLabel.SetVisible(true);
             Graphics.Update();
         };
+        fileDownloader.OnError += x =>
+        {
+            Console.WriteLine(x.Message);
+            Console.WriteLine(x.StackTrace);
+            statusLabel.SetText("Download failed. Try again later.");
+            progressLabel.SetVisible(true);
+            progressLabel.SetText($"Make sure you are connected to the internet and allow the program past anti-virus software.");
+            progressBar.SetVisible(false);
+            Program.Window.ForceClose = true;
+        };
         Graphics.Schedule(() => fileDownloader.Download(TimeSpan.FromSeconds(10), null, 100));
         fileDownloader.OnFinished += () =>
         {
-            Stopwatch stopwatch = Stopwatch.StartNew();
-            int updateFrequency = 10; // Update the screen every x ms
-            Archive archive = new Archive(tempFile);
-            int len = archive.Files.Count;
-            string destFolder = Path.GetFullPath(Path.Combine(Program.ProgramFilesFolder!, Config.ProgramInstallPath)).Replace('\\', '/');
-            for (int i = 0; i < len; i++)
+            try 
             {
-                var file = archive.Files[i];
-                if (stopwatch.ElapsedMilliseconds > updateFrequency)
+                Stopwatch stopwatch = Stopwatch.StartNew();
+                int updateFrequency = 10; // Update the screen every x ms
+                Archive archive = new Archive(tempFile);
+                int len = archive.Files.Count;
+                string destFolder = Path.GetFullPath(Path.Combine(Program.ProgramFilesFolder!, Config.ProgramInstallPath)).Replace('\\', '/');
+                for (int i = 0; i < len; i++)
                 {
-                    stopwatch.Restart();
-                    progressLabel.SetText($"Extracting {Path.Combine(destFolder, file.Filename).Replace('\\', '/')}");
-                    Graphics.Update();
+                    var file = archive.Files[i];
+                    if (stopwatch.ElapsedMilliseconds > updateFrequency)
+                    {
+                        stopwatch.Restart();
+                        progressLabel.SetText($"Extracting {Path.Combine(destFolder, file.Filename).Replace('\\', '/')}");
+                        Graphics.Update();
+                    }
+                    file.Extract(destFolder, true);
+                    progressBar.SetProgress((float) (i + 1) / len);
                 }
-                file.Extract(destFolder, true);
-                progressBar.SetProgress((float) (i + 1) / len);
+                archive.Dispose();
+                File.Delete(tempFile);
+                Program.Window.MarkInstallationComplete();
             }
-            archive.Dispose();
-            File.Delete(tempFile);
-            Program.Window.MarkInstallationComplete();
+            catch (Exception x)
+            {
+                Console.WriteLine(x.Message);
+                Console.WriteLine(x.StackTrace);
+                statusLabel.SetText("Extraction failed. Try again later.");
+                progressLabel.SetVisible(false);
+                progressBar.SetVisible(false);
+                Program.Window.ForceClose = true;
+            }
         };
     }
 }
