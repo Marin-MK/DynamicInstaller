@@ -39,7 +39,7 @@ public class Program
         {
             if (!Window.ForceClose && !Window.SkipExitPrompt)
             {
-                x.Value = false;
+                x.Value = true;
                 QuitWithConfirmation();
             }
         };
