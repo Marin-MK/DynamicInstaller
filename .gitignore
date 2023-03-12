@@ -8,6 +8,8 @@
 
 line_count.rb
 Config.cs
+*.ico
+*.bat
 
 # Visual Studio folder
 .vs
