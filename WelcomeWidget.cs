@@ -16,7 +16,11 @@ internal class WelcomeWidget : MainWidget
         SetBackgroundColor(SystemColors.LightBorderFiller);
         MultilineLabel headerLabel = new MultilineLabel(this);
         headerLabel.SetFont(Font.Get("Arial", 12));
-        headerLabel.SetText($"This will install {VersionMetadata.ProgramDisplayName} {VersionMetadata.ProgramVersion} on your computer for all users.\n\nIt is recommended that you close all other applications before continuing.\n\nClick Next to continue, or Cancel to exit Setup.");
+        string text = "";
+        if (!string.IsNullOrEmpty(Program.ExistingVersion) && VersionMetadata.CompareVersions(Program.ExistingVersion, VersionMetadata.ProgramVersion) == -1)
+            text = $"This will upgrade {VersionMetadata.ProgramDisplayName} from {Program.ExistingVersion} to {VersionMetadata.ProgramVersion} for all users.";
+        else text = $"This will install {VersionMetadata.ProgramDisplayName} {VersionMetadata.ProgramVersion} on your computer for all users.";
+        headerLabel.SetText(text + "\n\nIt is recommended that you close all other applications before continuing.\n\nClick Next to continue, or Cancel to exit Setup.");
         headerLabel.SetBlendMode(BlendMode.Blend);
         headerLabel.SetHDocked(true);
         headerLabel.SetPadding(40, 20);

@@ -27,7 +27,7 @@ public class Program
                 Console.WriteLine("Metadata download or verification failed.");
                 return;
             }
-            //ExistingVersion = GetInstalledVersion();
+            ExistingVersion = GetInstalledVersion();
             // Change text to say update from {old} to {new} version if an old version exists
             if (!ValidateDependencies())
             {
