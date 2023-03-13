@@ -2,58 +2,81 @@
 using NativeLibraryLoader;
 using odl;
 using System.Diagnostics;
-using System.Reflection;
-using System.Security.Principal;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace DynamicInstaller;
 
 public class Program
 {
-    internal const string CoreLibraryDownloadLink = "https://www.dropbox.com/s/1hmpo9ozu0rt8qm/MK-Core-Libraries.zip?dl=1";
-    internal const string CoreLibraryPath = "MK/Core";
-
-    internal static readonly string[] RequiredFiles =
-    {
-        "libfreetype-6.dll",
-        "libpng16-16.dll",
-        "SDL2.dll",
-        "SDL2_image.dll",
-        "SDL2_ttf.dll",
-        "zlib1.dll"
-    };
-
     internal static string? ProgramFilesFolder;
     internal static string? DependencyFolder;
     internal static string ProgramExecutablePath => Path.Combine(ProgramFilesFolder!, Config.ProgramInstallPath, Config.ProgramLaunchFile).Replace('/', '\\');
+    internal static string? ExistingVersion;
 
     internal static InstallerWindow Window;
 
     public static void Main(string[] args)
     {
-        if (!Setup()) return;
-        Amethyst.Start(GetPathInfo(), false, false);
-
-        Window = new InstallerWindow();
-        Window.OnClosing += x =>
+        try
         {
-            if (!Window.ForceClose && !Window.SkipExitPrompt)
+            Setup();
+            if (!Config.LoadMetadata())
             {
-                x.Value = true;
-                QuitWithConfirmation();
+                Console.WriteLine("Metadata download or verification failed.");
+                return;
             }
-        };
-        Window.Setup();
+            ExistingVersion = GetInstalledVersion();
+            if (args.Length > 0 && args[0] == "--metadata")
+            {
+                if (string.IsNullOrEmpty(ExistingVersion))
+                    Console.WriteLine($"Installed: None | Latest: {Config.Program.Version}");
+                else Console.WriteLine($"Installed: {ExistingVersion} | Latest: {Config.Program.Version}");
+                return;
+            }
+            if (!ValidateDependencies())
+            {
+                Console.WriteLine("Failed to install or validate dependencies.");
+                return;
+            }
+            Amethyst.Start(GetPathInfo(), false, false);
 
-        Window.Show();
+            Window = new InstallerWindow();
+            Window.OnClosing += x =>
+            {
+                if (!Window.ForceClose && !Window.SkipExitPrompt)
+                {
+                    x.Value = true;
+                    QuitWithConfirmation();
+                }
+            };
+            Window.Setup();
 
-        Amethyst.Run();
+            Window.Show();
 
-        if (!Window.Disposed) Window.Dispose();
-        Amethyst.Stop();
+            Amethyst.Run();
+
+            if (!Window.Disposed) Window.Dispose();
+            Amethyst.Stop();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Unknown error: " + ex.Message + "\n" + ex.StackTrace);
+        }
     }
 
-    private static bool Setup()
+    private static string? GetInstalledVersion()
+    {
+        string folder = Path.Combine(ProgramFilesFolder!, Config.Program.InstallPath);
+        if (!Directory.Exists(folder)) return null;
+        string execFile = Path.Combine(folder, Config.Program.LaunchFile);
+        string versionFile = Path.Combine(folder, "version.txt");
+        if (File.Exists(execFile) && File.Exists(versionFile))
+            return File.ReadAllText(versionFile).TrimEnd();
+        return null;
+    }
+
+    private static void Setup()
     {
         ProgramFilesFolder = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);//, Environment.SpecialFolderOption.Create);
         if (string.IsNullOrEmpty(ProgramFilesFolder))
@@ -68,12 +91,15 @@ public class Program
                 }
             }
         }
-        //ProgramFilesFolder = Environment.GetFolderPath(Environment.SpecialFolder.Desktop); // TODO DEBUG: USE FOLDER THAT DOES NOT REQUIRE ELEVATED PERMISSIONS
+    }
+
+    private static bool ValidateDependencies()
+    {
         if (!HasAllDependencies())
         {
             if (!InstallDependencies()) return false;
         }
-        DependencyFolder = Path.Combine(ProgramFilesFolder, CoreLibraryPath, "lib", "windows");
+        DependencyFolder = Path.Combine(ProgramFilesFolder!, Config.CoreLibraryPath, "lib", "windows");
         return true;
     }
 
@@ -91,9 +117,9 @@ public class Program
 
     private static bool HasAllDependencies()
     {
-        foreach (string requiredFile in RequiredFiles)
+        foreach (string requiredFile in Config.RequiredFiles[PlatformString])
         {
-            if (!File.Exists(Path.Combine(ProgramFilesFolder!, CoreLibraryPath, "lib", "windows", requiredFile)))
+            if (!File.Exists(Path.Combine(ProgramFilesFolder!, Config.CoreLibraryPath, "lib", PlatformString, requiredFile)))
             {
                 return false;
             }
@@ -101,15 +127,20 @@ public class Program
         return true;
     }
 
+    private static string PlatformString => Graphics.Platform switch
+    {
+        odl.Platform.Windows => "windows",
+        odl.Platform.Linux => "linux",
+        _ => "unknown"
+    };
+
     private static bool InstallDependencies()
     {
         string tempFile = Path.GetTempFileName();
-        FileDownloader downloader = new FileDownloader(CoreLibraryDownloadLink, tempFile);
-        downloader.OnError += x => Console.WriteLine($"Error downloading core libraries: {x}");
-        downloader.Download(TimeSpan.FromSeconds(10));
-        if (downloader.HadError) return false;
+        if (!FileDownloader.DownloadFile(Config.CoreLibraryDownloadLink[PlatformString], tempFile))
+            return false;
         Archive coreLibFile = new Archive(tempFile);
-        string extractURL = Path.Combine(ProgramFilesFolder!, CoreLibraryPath);
+        string extractURL = Path.Combine(ProgramFilesFolder!, Config.CoreLibraryPath);
         coreLibFile.Extract(extractURL);
         coreLibFile.Dispose();
         File.Delete(tempFile);
