@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "DynamicInstaller": {
-      "commandName": "Project",
-      "commandLineArgs": "--automatic-update-spawner"
-    }
-  }
-}
