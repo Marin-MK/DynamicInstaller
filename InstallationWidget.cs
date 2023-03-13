@@ -69,13 +69,14 @@ internal class InstallationWidget : MainWidget
         Graphics.Schedule(() => fileDownloader.Download(TimeSpan.FromSeconds(10), null, 100));
         fileDownloader.OnFinished += () =>
         {
-            try 
+            try
             {
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 int updateFrequency = 10; // Update the screen every x ms
                 Archive archive = new Archive(tempFile);
                 int len = archive.Files.Count;
                 string destFolder = Path.GetFullPath(Path.Combine(Program.ProgramFilesFolder!, Config.ProgramInstallPath)).Replace('\\', '/');
+                Directory.Move(destFolder, destFolder + ".bak");
                 for (int i = 0; i < len; i++)
                 {
                     var file = archive.Files[i];
@@ -91,6 +92,7 @@ internal class InstallationWidget : MainWidget
                 archive.Dispose();
                 File.Delete(tempFile);
                 Program.Window.MarkInstallationComplete();
+                Directory.Delete(destFolder + ".bak");
             }
             catch (Exception x)
             {
