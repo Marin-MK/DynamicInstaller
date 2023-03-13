@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\amethyst\amethyst.csproj" />
+    <ProjectReference Include="..\MKUtils\MKUtils.csproj" />
     <ProjectReference Include="..\NativeLibraryLoader\NativeLibraryLoader.csproj" />
     <ProjectReference Include="..\odl\odl.csproj" />
   </ItemGroup>

@@ -1,4 +1,6 @@
-﻿using amethyst;
+﻿global using MKUtils;
+
+using amethyst;
 using NativeLibraryLoader;
 using odl;
 using System.Diagnostics;
@@ -9,9 +11,8 @@ namespace DynamicInstaller;
 
 public class Program
 {
-    internal static string? ProgramFilesFolder;
     internal static string? DependencyFolder;
-    internal static string ProgramExecutablePath => Path.Combine(ProgramFilesFolder!, Config.ProgramInstallPath, Config.ProgramLaunchFile).Replace('/', '\\');
+    internal static string ProgramExecutablePath => Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.ProgramInstallPath, Config.ProgramLaunchFile).Replace('/', '\\');
     internal static string? ExistingVersion;
 
     internal static InstallerWindow Window;
@@ -20,7 +21,6 @@ public class Program
     {
         try
         {
-            Setup();
             if (!Config.LoadMetadata())
             {
                 Console.WriteLine("Metadata download or verification failed.");
@@ -67,7 +67,7 @@ public class Program
 
     private static string? GetInstalledVersion()
     {
-        string folder = Path.Combine(ProgramFilesFolder!, Config.Program.InstallPath);
+        string folder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.Program.InstallPath);
         if (!Directory.Exists(folder)) return null;
         string execFile = Path.Combine(folder, Config.Program.LaunchFile);
         string versionFile = Path.Combine(folder, "version.txt");
@@ -76,30 +76,13 @@ public class Program
         return null;
     }
 
-    private static void Setup()
-    {
-        ProgramFilesFolder = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);//, Environment.SpecialFolderOption.Create);
-        if (string.IsNullOrEmpty(ProgramFilesFolder))
-        {
-            if (Directory.Exists("/usr/local")) ProgramFilesFolder = "/usr/local";
-            else
-            {
-                ProgramFilesFolder = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
-                if (string.IsNullOrEmpty(ProgramFilesFolder))
-                {
-                    ProgramFilesFolder = "./";
-                }
-            }
-        }
-    }
-
     private static bool ValidateDependencies()
     {
         if (!HasAllDependencies())
         {
             if (!InstallDependencies()) return false;
         }
-        DependencyFolder = Path.Combine(ProgramFilesFolder!, Config.CoreLibraryPath, "lib", "windows");
+        DependencyFolder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.CoreLibraryPath, "lib", "windows");
         return true;
     }
 
@@ -119,7 +102,7 @@ public class Program
     {
         foreach (string requiredFile in Config.RequiredFiles[PlatformString])
         {
-            if (!File.Exists(Path.Combine(ProgramFilesFolder!, Config.CoreLibraryPath, "lib", PlatformString, requiredFile)))
+            if (!File.Exists(Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.CoreLibraryPath, "lib", PlatformString, requiredFile)))
             {
                 return false;
             }
@@ -137,10 +120,10 @@ public class Program
     private static bool InstallDependencies()
     {
         string tempFile = Path.GetTempFileName();
-        if (!FileDownloader.DownloadFile(Config.CoreLibraryDownloadLink[PlatformString], tempFile))
+        if (!Downloader.DownloadFile(Config.CoreLibraryDownloadLink[PlatformString], tempFile))
             return false;
         Archive coreLibFile = new Archive(tempFile);
-        string extractURL = Path.Combine(ProgramFilesFolder!, Config.CoreLibraryPath);
+        string extractURL = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.CoreLibraryPath);
         coreLibFile.Extract(extractURL);
         coreLibFile.Dispose();
         File.Delete(tempFile);

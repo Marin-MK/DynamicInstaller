@@ -71,19 +71,20 @@ internal class InstallationWidget : MainWidget
         {
             try
             {
+                statusLabel.SetText("Extracting files...");
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 int updateFrequency = 10; // Update the screen every x ms
                 Archive archive = new Archive(tempFile);
                 int len = archive.Files.Count;
-                string destFolder = Path.GetFullPath(Path.Combine(Program.ProgramFilesFolder!, Config.ProgramInstallPath)).Replace('\\', '/');
-                Directory.Move(destFolder, destFolder + ".bak");
+                string destFolder = Path.GetFullPath(Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.ProgramInstallPath)).Replace('\\', '/');
+                if (Directory.Exists(destFolder)) Directory.Move(destFolder, destFolder + ".bak");
                 for (int i = 0; i < len; i++)
                 {
                     var file = archive.Files[i];
                     if (stopwatch.ElapsedMilliseconds > updateFrequency)
                     {
                         stopwatch.Restart();
-                        progressLabel.SetText($"Extracting {Path.Combine(destFolder, file.Filename).Replace('\\', '/')}");
+                        progressLabel.SetText($"Extracting {file.Filename.Replace('\\', '/')}");
                         Graphics.Update();
                     }
                     file.Extract(destFolder, true);
@@ -91,8 +92,12 @@ internal class InstallationWidget : MainWidget
                 }
                 archive.Dispose();
                 File.Delete(tempFile);
+                string arg1 = Process.GetCurrentProcess().MainModule!.FileName;
+                string arg2 = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.Core.InstallPath, "updater.exe").Replace('/', '\\');
+                string cmd = $"copy \"{arg1}\" \"{arg2}\"";
+                Program.GetCommandOutput(cmd);
                 Program.Window.MarkInstallationComplete();
-                Directory.Delete(destFolder + ".bak");
+                if (Directory.Exists(destFolder + ".bak")) Directory.Delete(destFolder + ".bak", true);
             }
             catch (Exception x)
             {
