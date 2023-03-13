@@ -18,6 +18,7 @@ internal class StepWidget : Widget
     Button cancelButton;
     Button nextButton;
     Button backButton;
+    bool AutomaticUpdateMode = false;
 
     public StepWidget(IContainer parent) : base(parent)
     {
@@ -103,7 +104,7 @@ internal class StepWidget : Widget
         else if (LinkedWidget is EULAWidget)
         {
             Program.Window.SetHeaderText("Installing");
-            Program.Window.SetDescriptionText($"Please wait while Setup installs {Config.ProgramDisplayName} on your computer.");
+            Program.Window.SetDescriptionText($"Please wait while Setup installs {VersionMetadata.ProgramDisplayName} on your computer.");
             Program.Window.SetMainWidget<InstallationWidget>();
             backButton.Dispose();
             nextButton.Dispose();
@@ -112,10 +113,18 @@ internal class StepWidget : Widget
         else if (LinkedWidget is InstallationWidget)
         {
             Program.Window.SetMainWidget<FinishedWidget>();
-            Program.Window.SetHeaderText($"Completing the {Config.ProgramDisplayName} Setup Wizard");
-            Program.Window.SetDescriptionText($"Setup has finished installing {Config.ProgramDisplayName} on your computer.");
+            Program.Window.SetHeaderText($"Completing the {VersionMetadata.ProgramDisplayName} Setup Wizard");
+            Program.Window.SetDescriptionText($"Setup has finished installing {VersionMetadata.ProgramDisplayName} on your computer.");
             cancelButton.SetText("Finish");
         }
+    }
+
+    public void SetAutomaticUpdateMode()
+    {
+        AutomaticUpdateMode = true;
+        backButton.Dispose();
+        nextButton.Dispose();
+        cancelButton.Dispose();
     }
 
     private void ClickedBack()
@@ -131,6 +140,15 @@ internal class StepWidget : Widget
 
     public void MarkInstallationComplete()
     {
-        ClickedNext();
+        Graphics.Schedule(() =>
+        {
+            if (AutomaticUpdateMode)
+            {
+                Program.Window.ForceClose = true;
+                Program.Window.Close();
+                Program.RunExecutable();
+            }
+            else ClickedNext();
+        });
     }
 }

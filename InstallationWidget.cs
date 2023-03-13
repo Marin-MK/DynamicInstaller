@@ -13,23 +13,26 @@ namespace DynamicInstaller;
 internal class InstallationWidget : MainWidget
 {
     Downloader fileDownloader;
+    Label statusLabel;
+    Label progressLabel;
+    ProgressBar progressBar;
 
     public InstallationWidget(IContainer parent, StepWidget stepWidget) : base(parent, stepWidget)
     {
         SetBackgroundColor(SystemColors.LightBorderFiller);
-        Label statusLabel = new Label(this);
+        statusLabel = new Label(this);
         statusLabel.SetFont(Font.Get("Arial", 12));
         statusLabel.SetBlendMode(BlendMode.Blend);
         statusLabel.SetPadding(40, 20);
         statusLabel.SetText("Connecting to server...");
 
-        Label progressLabel = new Label(this);
+        progressLabel = new Label(this);
         progressLabel.SetFont(Font.Get("Arial", 12));
         progressLabel.SetBlendMode(BlendMode.Blend);
         progressLabel.SetPadding(40, 42);
         progressLabel.SetVisible(false);
 
-        ProgressBar progressBar = new ProgressBar(this);
+        progressBar = new ProgressBar(this);
         progressBar.SetHDocked(true);
         progressBar.SetPadding(40, 74);
         progressBar.SetHeight(32);
@@ -40,12 +43,16 @@ internal class InstallationWidget : MainWidget
         divider.SetPadding(0, 0, 0, 1);
         divider.SetBackgroundColor(SystemColors.Divider);
         divider.SetHeight(1);
+    }
 
+    public async Task Download()
+    {
         string tempFile = Path.GetTempFileName();
-        fileDownloader = new Downloader(Config.ProgramDownloadLink, tempFile);
+        fileDownloader = new Downloader(VersionMetadata.ProgramDownloadLink, tempFile);
         bool updatedLabel = false;
-        fileDownloader.OnProgress += x =>
+        fileDownloader.OnProgress += x => Graphics.Schedule(() => 
         {
+            if (Program.Window.Disposed) return;
             if (!updatedLabel)
             {
                 statusLabel.SetText("Downloading files...");
@@ -55,8 +62,8 @@ internal class InstallationWidget : MainWidget
             progressLabel.SetText($"Downloaded {x.ReadBytesToString()} of {x.TotalBytesToString()}");
             progressLabel.SetVisible(true);
             Graphics.Update();
-        };
-        fileDownloader.OnError += x =>
+        });
+        fileDownloader.OnError += x => Graphics.Schedule(() => 
         {
             Console.WriteLine(x.Message);
             Console.WriteLine(x.StackTrace);
@@ -65,21 +72,24 @@ internal class InstallationWidget : MainWidget
             progressLabel.SetText($"Make sure you are connected to the internet and allow the program past anti-virus software.");
             progressBar.SetVisible(false);
             Program.Window.ForceClose = true;
-        };
-        Graphics.Schedule(() => fileDownloader.Download(TimeSpan.FromSeconds(10), null, 100));
-        fileDownloader.OnFinished += () =>
+        });
+        await fileDownloader.DownloadAsync(TimeSpan.FromSeconds(10), null, 100);
+        if (fileDownloader.HadError || Program.Window.Disposed) return;
+        // Anything after an await can be on a different thread the the main one, so we schedule the rest of the code to be sure it runs on main.
+        Graphics.Schedule(() =>
         {
             try
             {
                 statusLabel.SetText("Extracting files...");
                 Stopwatch stopwatch = Stopwatch.StartNew();
-                int updateFrequency = 10; // Update the screen every x ms
+                int updateFrequency = 16; // Update the screen every x ms
+                string destFolder = Path.GetFullPath(Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath)).Replace('\\', '/');
+                if (Directory.Exists(destFolder)) Directory.Delete(destFolder, true);
                 Archive archive = new Archive(tempFile);
                 int len = archive.Files.Count;
-                string destFolder = Path.GetFullPath(Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.ProgramInstallPath)).Replace('\\', '/');
-                if (Directory.Exists(destFolder)) Directory.Move(destFolder, destFolder + ".bak");
                 for (int i = 0; i < len; i++)
                 {
+                    if (Program.Window.Disposed) break;
                     var file = archive.Files[i];
                     if (stopwatch.ElapsedMilliseconds > updateFrequency)
                     {
@@ -92,12 +102,15 @@ internal class InstallationWidget : MainWidget
                 }
                 archive.Dispose();
                 File.Delete(tempFile);
-                string arg1 = Process.GetCurrentProcess().MainModule!.FileName;
-                string arg2 = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.Core.InstallPath, "updater.exe").Replace('/', '\\');
-                string cmd = $"copy \"{arg1}\" \"{arg2}\"";
-                Program.GetCommandOutput(cmd);
+                if (Program.Window.Disposed) return;
+                string arg1 = Process.GetCurrentProcess().MainModule!.FileName; // This executable's filename
+                string arg2 = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.CoreLibraryPath, "updater.exe").Replace('/', '\\'); // .../Program Files/MK/Core/updater.exe
+                if (File.Exists(arg2) && arg1 != arg2)
+                {
+                    File.Delete(arg2);
+                    File.Copy(arg1, arg2);
+                }
                 Program.Window.MarkInstallationComplete();
-                if (Directory.Exists(destFolder + ".bak")) Directory.Delete(destFolder + ".bak", true);
             }
             catch (Exception x)
             {
@@ -108,6 +121,6 @@ internal class InstallationWidget : MainWidget
                 progressBar.SetVisible(false);
                 Program.Window.ForceClose = true;
             }
-        };
+        });
     }
 }

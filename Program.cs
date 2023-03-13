@@ -12,28 +12,23 @@ namespace DynamicInstaller;
 public class Program
 {
     internal static string? DependencyFolder;
-    internal static string ProgramExecutablePath => Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.ProgramInstallPath, Config.ProgramLaunchFile).Replace('/', '\\');
+    internal static string ProgramExecutablePath => Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath, VersionMetadata.ProgramLaunchFile).Replace('/', '\\');
     internal static string? ExistingVersion;
 
     internal static InstallerWindow Window;
 
     public static void Main(string[] args)
     {
+        bool AutomaticUpdate = args.Length == 1 && args[0] == "--automatic-update";
         try
         {
-            if (!Config.LoadMetadata())
+            if (!VersionMetadata.Load().Result)
             {
                 Console.WriteLine("Metadata download or verification failed.");
                 return;
             }
-            ExistingVersion = GetInstalledVersion();
-            if (args.Length > 0 && args[0] == "--metadata")
-            {
-                if (string.IsNullOrEmpty(ExistingVersion))
-                    Console.WriteLine($"Installed: None | Latest: {Config.Program.Version}");
-                else Console.WriteLine($"Installed: {ExistingVersion} | Latest: {Config.Program.Version}");
-                return;
-            }
+            //ExistingVersion = GetInstalledVersion();
+            // Change text to say update from {old} to {new} version if an old version exists
             if (!ValidateDependencies())
             {
                 Console.WriteLine("Failed to install or validate dependencies.");
@@ -41,7 +36,7 @@ public class Program
             }
             Amethyst.Start(GetPathInfo(), false, false);
 
-            Window = new InstallerWindow();
+            Window = new InstallerWindow(800, AutomaticUpdate ? 240 : 480);
             Window.OnClosing += x =>
             {
                 if (!Window.ForceClose && !Window.SkipExitPrompt)
@@ -50,7 +45,7 @@ public class Program
                     QuitWithConfirmation();
                 }
             };
-            Window.Setup();
+            Window.Setup(AutomaticUpdate);
 
             Window.Show();
 
@@ -67,9 +62,9 @@ public class Program
 
     private static string? GetInstalledVersion()
     {
-        string folder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.Program.InstallPath);
+        string folder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath);
         if (!Directory.Exists(folder)) return null;
-        string execFile = Path.Combine(folder, Config.Program.LaunchFile);
+        string execFile = Path.Combine(folder, VersionMetadata.ProgramLaunchFile);
         string versionFile = Path.Combine(folder, "version.txt");
         if (File.Exists(execFile) && File.Exists(versionFile))
             return File.ReadAllText(versionFile).TrimEnd();
@@ -82,7 +77,7 @@ public class Program
         {
             if (!InstallDependencies()) return false;
         }
-        DependencyFolder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.CoreLibraryPath, "lib", "windows");
+        DependencyFolder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.CoreLibraryPath, "lib", "windows");
         return true;
     }
 
@@ -100,9 +95,9 @@ public class Program
 
     private static bool HasAllDependencies()
     {
-        foreach (string requiredFile in Config.RequiredFiles[PlatformString])
+        foreach (string requiredFile in VersionMetadata.RequiredFiles[PlatformString])
         {
-            if (!File.Exists(Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.CoreLibraryPath, "lib", PlatformString, requiredFile)))
+            if (!File.Exists(Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.CoreLibraryPath, "lib", PlatformString, requiredFile)))
             {
                 return false;
             }
@@ -120,10 +115,10 @@ public class Program
     private static bool InstallDependencies()
     {
         string tempFile = Path.GetTempFileName();
-        if (!Downloader.DownloadFile(Config.CoreLibraryDownloadLink[PlatformString], tempFile))
+        if (!Downloader.DownloadFile(VersionMetadata.CoreLibraryDownloadLink[PlatformString], tempFile))
             return false;
         Archive coreLibFile = new Archive(tempFile);
-        string extractURL = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, Config.CoreLibraryPath);
+        string extractURL = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.CoreLibraryPath);
         coreLibFile.Extract(extractURL);
         coreLibFile.Dispose();
         File.Delete(tempFile);
@@ -176,7 +171,7 @@ public class Program
     {
         Process proc = new Process();
         proc.StartInfo = new ProcessStartInfo(ProgramExecutablePath);
-        proc.StartInfo.UseShellExecute = true;
+        proc.StartInfo.UseShellExecute = false;
         proc.Start();
     }
 

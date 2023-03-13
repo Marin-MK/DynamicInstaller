@@ -17,36 +17,42 @@ internal class InstallerWindow : UIWindow
     MainWidget mainWidget;
     StepWidget stepWidget;
 
-    public InstallerWindow() : base(false, false)
+    public InstallerWindow(int width, int height) : base(false, false)
     {
         Initialize();
-        SetSize(800, 480);
-        SetMinimumSize(650, 400);
+        SetSize(width, height);
+        SetResizable(false);
         InitializeUI();
         Windows.Add(this);
         OnClosed += _ => Windows.Remove(this);
-        SetText($"Setup - {Config.ProgramDisplayName}");
+        SetText($"Setup - {VersionMetadata.ProgramDisplayName}");
         Logo.Initialize();
         SetIcon(Logo.Bitmap);
         SetBackgroundColor(SystemColors.WindowBackground);
     }
 
-    public void Setup()
+    public void Setup(bool automaticUpdate)
     {
         mainGrid = new Grid(UI);
         mainGrid.SetRows(
             new GridSize(96, Unit.Pixels),
             new GridSize(1),
-            new GridSize(64, Unit.Pixels)
+            automaticUpdate ? new GridSize(0) : new GridSize(64, Unit.Pixels)
         );
-        headerWidget = new HeaderWidget(mainGrid);
+        headerWidget = new HeaderWidget(mainGrid, automaticUpdate);
         headerWidget.SetGridRow(0);
         stepWidget = new StepWidget(mainGrid);
         stepWidget.SetGridRow(2);
-        stepWidget.SetBackStatus(false);
-        mainWidget = new WelcomeWidget(mainGrid, stepWidget);
+        if (automaticUpdate) mainWidget = new InstallationWidget(mainGrid, stepWidget);
+        else mainWidget = new WelcomeWidget(mainGrid, stepWidget);
         mainWidget.SetGridRow(1);
         stepWidget.LinkWidget(mainWidget);
+        if (automaticUpdate)
+        {
+            stepWidget.SetAutomaticUpdateMode();
+            ((InstallationWidget) mainWidget).Download();
+        }
+        else stepWidget.SetBackStatus(false);
     }
 
     public void SetMainWidget<T>() where T : MainWidget
@@ -55,6 +61,7 @@ internal class InstallerWindow : UIWindow
         mainWidget = (MainWidget) Activator.CreateInstance(typeof(T), new object[] { mainGrid, stepWidget })!;
         mainWidget.SetGridRow(1);
         stepWidget.LinkWidget(mainWidget);
+        if (mainWidget is InstallationWidget) ((InstallationWidget) mainWidget).Download();
     }
 
     public void SetHeaderText(string text)

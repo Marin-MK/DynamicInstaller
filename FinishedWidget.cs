@@ -15,7 +15,7 @@ internal class FinishedWidget : MainWidget
 
     List<(string ID, string Text)> Options = new List<(string ID, string Text)>()
     {
-        ("launch", $"Launch {Config.ProgramDisplayName}"),
+        ("launch", $"Launch {VersionMetadata.ProgramDisplayName}"),
     };
 
     public FinishedWidget(IContainer parent, StepWidget stepWidget) : base(parent, stepWidget)
@@ -28,9 +28,9 @@ internal class FinishedWidget : MainWidget
         infoLabel.SetHDocked(true);
         infoLabel.SetPadding(40, 20);
 
-        foreach (string fileAssoc in Config.ProgramFileAssociations)
+        foreach (string fileAssoc in VersionMetadata.ProgramFileAssociations)
         {
-            Options.Add((fileAssoc, $"Associate {fileAssoc} files with {Config.ProgramDisplayName}"));
+            Options.Add((fileAssoc, $"Associate {fileAssoc} files with {VersionMetadata.ProgramDisplayName}"));
         }
 
         for (int i = 0; i < Options.Count; i++)

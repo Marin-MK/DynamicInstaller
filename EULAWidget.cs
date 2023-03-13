@@ -25,7 +25,7 @@ internal class EULAWidget : MainWidget
         MultilineReadOnlyTextBox Box = new MultilineReadOnlyTextBox(this);
         Box.SetDocked(true);
         Box.SetPadding(40, 80);
-        Box.SetText(Config.ProgramEULAText.Replace("\r", ""));
+        Box.SetText(VersionMetadata.ProgramEULAText.Replace("\r", ""));
         Box.SetLineHeight(22);
 
         RadioBox acceptBox = new RadioBox(this);
