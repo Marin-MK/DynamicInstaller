@@ -1,17 +1,20 @@
 ﻿using System.Diagnostics;
 using System.Net;
+using System.Text;
 using System.Threading.Channels;
 
 namespace DynamicInstaller;
 
-public class FileDownloader
+public class Downloader
 {
     public string URL { get; protected set; }
-    public string Filename { get; protected set; }
+    public string? Filename { get; protected set; }
+    public Stream Stream { get; protected set; }
     public bool Done { get; protected set; }
     public bool Cancelled { get; protected set; }
     public bool HadError { get; protected set; }
     public float Progress { get; protected set; }
+    public bool CloseStream { get; set; } = false;
 
     public Action? OnFinished;
     public Action? OnCancelled;
@@ -20,17 +23,39 @@ public class FileDownloader
 
     private CancellationTokenSource CancellationTokenSource;
 
-    public FileDownloader(string url, string filename)
+    public static string DownloadString(string url, TimeSpan? timeout = null, Encoding? encoding = null)
     {
-        this.URL = url;
-        this.Filename = filename;
-        this.CancellationTokenSource = new CancellationTokenSource();
+        MemoryStream stream = new MemoryStream();
+        Downloader fd = new Downloader(url, stream);
+        fd.Download(timeout ?? TimeSpan.FromSeconds(10));
+        string text = (encoding ?? Encoding.Default).GetString(stream.ToArray());
+        stream.Dispose();
+        return text;
     }
 
-    public FileDownloader(string url, string filename, CancellationTokenSource cancellationTokenSource)
+    public static bool DownloadFile(string url, string Filename, TimeSpan? timeout = null)
+    {
+        Downloader fd = new Downloader(url, Filename);
+        fd.Download(timeout ?? TimeSpan.FromSeconds(10));
+        return !fd.HadError;
+    }
+
+    public Downloader(string url, string filename) : this(url, new FileStream(filename, FileMode.Create, FileAccess.Write), new CancellationTokenSource())
+    {
+        this.CloseStream = true;
+    }
+
+    public Downloader(string url, string filename, CancellationTokenSource cancellationTokenSource) : this(url, new FileStream(filename, FileMode.Create, FileAccess.Write), cancellationTokenSource)
+    {
+        this.CloseStream = true;
+    }
+
+    public Downloader(string url, Stream stream) : this(url, stream, new CancellationTokenSource()) { }
+
+    public Downloader(string url, Stream stream, CancellationTokenSource cancellationTokenSource)
     {
         this.URL = url;
-        this.Filename = filename;
+        this.Stream = stream;
         this.CancellationTokenSource = cancellationTokenSource;
     }
 
@@ -61,10 +86,8 @@ public class FileDownloader
 
     public async Task DownloadAsync(TimeSpan timeout, TimeSpan? progressReportCooldown, int? fixedReportCount = null)
     {
-        bool createdFile = false;
         var client = new HttpClient();
         HttpResponseMessage response = null!;
-        FileStream? fileStream = null!;
         try
         {
             client = new HttpClient();
@@ -83,10 +106,12 @@ public class FileDownloader
                 OnCancelled?.Invoke();
                 return;
             }
-            string dirName = Path.GetDirectoryName(Filename)!;
-            if (!Directory.Exists(dirName)) Directory.CreateDirectory(dirName);
-            fileStream = new FileStream(Filename, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-            createdFile = true;
+
+            if (!string.IsNullOrEmpty(Filename))
+            {
+                string dirName = Path.GetDirectoryName(Filename)!;
+                if (!Directory.Exists(dirName)) Directory.CreateDirectory(dirName);
+            }
             
             long totalBytes = (long) response.Content.Headers.ContentLength!;
             long totalRead = 0;
@@ -105,7 +130,7 @@ public class FileDownloader
                     if (Cancelled || CancellationTokenSource.IsCancellationRequested) break;
                     totalRead += bytesRead;
                     if (bytesRead == 0) break;
-                    await fileStream.WriteAsync(buffer, 0, bytesRead, CancellationTokenSource.Token);
+                    await this.Stream.WriteAsync(buffer, 0, bytesRead, CancellationTokenSource.Token);
                     if (fixedReportSize * reportCount < totalRead)
                     {
                         progressObject.BytesRead = totalRead;
@@ -126,7 +151,7 @@ public class FileDownloader
                     if (Cancelled || CancellationTokenSource.IsCancellationRequested) break;
                     totalRead += bytesRead;
                     if (bytesRead == 0) break;
-                    await fileStream.WriteAsync(buffer, 0, bytesRead, CancellationTokenSource.Token);
+                    await this.Stream.WriteAsync(buffer, 0, bytesRead, CancellationTokenSource.Token);
                     if (firstTime || !progressReportCooldown.HasValue || timeSinceLastReport.ElapsedTicks >= progressReportCooldown.Value.Ticks)
                     {
                         progressObject.BytesRead = totalRead;
@@ -141,16 +166,21 @@ public class FileDownloader
             if (Cancelled || CancellationTokenSource.IsCancellationRequested)
             {
                 OnCancelled?.Invoke();
-                fileStream?.Dispose();
-                fileStream = null;
-                if (createdFile) File.Delete(Filename);
+                if (CloseStream)
+                {
+                    Stream?.Dispose();
+                    Stream = null;
+                }
             }
             else
             {
                 response?.Dispose();
                 response = null;
-                fileStream?.Dispose();
-                fileStream = null;
+                if (CloseStream)
+                {
+                    Stream?.Dispose();
+                    Stream = null;
+                }
                 Done = true;
                 if (!reported1) OnProgress?.Invoke(new DownloadProgress(totalBytes, totalBytes));
                 OnFinished?.Invoke();
@@ -159,17 +189,21 @@ public class FileDownloader
         catch (OperationCanceledException)
         {
             OnCancelled?.Invoke();
-            fileStream?.Dispose();
-            fileStream = null;
-            if (createdFile) File.Delete(Filename);
+            if (CloseStream)
+            {
+                Stream?.Dispose();
+                Stream = null;
+            }
             HadError = true;
         }
         catch (Exception ex) when (ex is InvalidOperationException || ex is HttpRequestException || ex is TaskCanceledException || ex is UriFormatException || ex is NotSupportedException)
         {
             Console.WriteLine("Error downloading: " + ex.Message + "\n" + ex.StackTrace);
-            fileStream?.Dispose();
-            fileStream = null;
-            if (createdFile) File.Delete(Filename);
+            if (CloseStream)
+            {
+                Stream?.Dispose();
+                Stream = null;
+            }
             OnError?.Invoke(ex);
             HadError = true;
         }
@@ -177,7 +211,11 @@ public class FileDownloader
         {
             client.Dispose();
             response?.Dispose();
-            fileStream?.Dispose();
+            if (CloseStream)
+            {
+                Stream?.Dispose();
+                Stream = null;
+            }
         }
     }
 

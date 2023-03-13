@@ -12,7 +12,7 @@ namespace DynamicInstaller;
 
 internal class InstallationWidget : MainWidget
 {
-    FileDownloader fileDownloader;
+    Downloader fileDownloader;
 
     public InstallationWidget(IContainer parent, StepWidget stepWidget) : base(parent, stepWidget)
     {
@@ -42,7 +42,7 @@ internal class InstallationWidget : MainWidget
         divider.SetHeight(1);
 
         string tempFile = Path.GetTempFileName();
-        fileDownloader = new FileDownloader(Config.ProgramDownloadLink, tempFile);
+        fileDownloader = new Downloader(Config.ProgramDownloadLink, tempFile);
         bool updatedLabel = false;
         fileDownloader.OnProgress += x =>
         {
