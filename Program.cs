@@ -19,23 +19,28 @@ public class Program
 
     public static void Main(string[] args)
     {
+        string currentParent = Path.GetDirectoryName(Environment.ProcessPath)!;
+        Logger.Start(Path.Combine(currentParent, "log.txt"));
         bool AutomaticUpdate = args.Length == 1 && args[0] == "--automatic-update";
+        Logger.WriteLine($"Automatic Update flag is {AutomaticUpdate}");
         try
         {
-            if (!VersionMetadata.Load().Result)
+            if (!VersionMetadata.Load())
             {
-                Console.WriteLine("Metadata download or verification failed.");
+                Logger.WriteLine("Metadata download or verification failed.");
                 return;
             }
             ExistingVersion = GetInstalledVersion();
             // Change text to say update from {old} to {new} version if an old version exists
             if (!ValidateDependencies())
             {
-                Console.WriteLine("Failed to install or validate dependencies.");
+                Logger.WriteLine("Failed to install or validate dependencies.");
                 return;
             }
+            Logger.WriteLine("Starting Amethyst...");
             Amethyst.Start(GetPathInfo(), false, false);
 
+            Logger.WriteLine("Creating window...");
             Window = new InstallerWindow(800, AutomaticUpdate ? 240 : 480);
             Window.OnClosing += x =>
             {
@@ -45,29 +50,39 @@ public class Program
                     QuitWithConfirmation();
                 }
             };
+            Logger.WriteLine("Initializing main widgets...");
             Window.Setup(AutomaticUpdate);
 
+            Logger.WriteLine("Showing window...");
             Window.Show();
 
+            Logger.WriteLine("Entering Amethyst UI loop");
             Amethyst.Run();
 
+            Logger.WriteLine("Stopping Amethyst...");
             if (!Window.Disposed) Window.Dispose();
             Amethyst.Stop();
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Unknown error: " + ex.Message + "\n" + ex.StackTrace);
+            Logger.Error("Unknown error: " + ex.Message + "\n" + ex.StackTrace);
         }
+        Logger.Stop();
     }
 
     private static string? GetInstalledVersion()
     {
+        Logger.WriteLine("Locating existing installation...");
         string folder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath);
         if (!Directory.Exists(folder)) return null;
         string execFile = Path.Combine(folder, VersionMetadata.ProgramLaunchFile);
         string versionFile = Path.Combine(folder, "version.txt");
         if (File.Exists(execFile) && File.Exists(versionFile))
+        {
+            Logger.WriteLine($"Found the the executable and version files for a copy to count at '{folder}'");
             return File.ReadAllText(versionFile).TrimEnd();
+        }
+        Logger.WriteLine("No existing installation found.");
         return null;
     }
 
@@ -95,13 +110,16 @@ public class Program
 
     private static bool HasAllDependencies()
     {
+        Logger.WriteLine("Detecting whether all graphical dependencies are installed...");
         foreach (string requiredFile in VersionMetadata.RequiredFiles[PlatformString])
         {
             if (!File.Exists(Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.CoreLibraryPath, "lib", PlatformString, requiredFile)))
             {
+                Logger.WriteLine("MISSING DEPENDENCY: " + requiredFile);
                 return false;
             }
         }
+        Logger.WriteLine("All dependencies are installed.");
         return true;
     }
 
@@ -114,11 +132,14 @@ public class Program
 
     private static bool InstallDependencies()
     {
+        Logger.WriteLine("Downloading core dependencies...");
         string tempFile = Path.GetTempFileName();
         if (!Downloader.DownloadFile(VersionMetadata.CoreLibraryDownloadLink[PlatformString], tempFile))
             return false;
+        Logger.WriteLine("Initializing core dependencies archive...");
         Archive coreLibFile = new Archive(tempFile);
         string extractURL = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.CoreLibraryPath);
+        Logger.WriteLine("Extracting core dependencies...");
         coreLibFile.Extract(extractURL);
         coreLibFile.Dispose();
         File.Delete(tempFile);
@@ -132,6 +153,7 @@ public class Program
 
     internal static bool SetFileAssociation(string fileAssoc)
     {
+        Logger.WriteLine($"Setting file association for '{fileAssoc}'");
         if (Graphics.Platform != odl.Platform.Windows) return false;
         string assocOutput = GetCommandOutput($"assoc {fileAssoc}");
         Match assocMatch = Regex.Match(assocOutput, $@"{fileAssoc.Replace(".", "\\.")}=(.+)$");
@@ -156,6 +178,7 @@ public class Program
 
     internal static string GetCommandOutput(string command)
     {
+        Logger.WriteLine($"Getting command output for '{command}'...");
         if (Graphics.Platform != odl.Platform.Windows) throw new PlatformNotSupportedException();
         ProcessStartInfo procStartInfo = new ProcessStartInfo("cmd", "/c " + command);
         procStartInfo.RedirectStandardOutput = true;
@@ -169,6 +192,7 @@ public class Program
 
     internal static void RunExecutable()
     {
+        Logger.WriteLine("Launching program...");
         Process proc = new Process();
         proc.StartInfo = new ProcessStartInfo(ProgramExecutablePath);
         proc.StartInfo.UseShellExecute = false;
@@ -179,9 +203,9 @@ public class Program
     {
         Popup popup = new Popup("Exit Setup", "Setup is not complete. If you exit now, the program will not be installed.\n\nYou may run Setup again at another time to complete the installation.\n\nExit Setup?", PopupType.Information, new List<string>() { "Yes", "No" });
         int result = popup.Show();
-        Console.WriteLine(result);
         if (result == 0) // Yes
         {
+            Logger.WriteLine("Closing window...");
             Program.Window.Dispose();
         }
     }

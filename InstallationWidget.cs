@@ -45,12 +45,11 @@ internal class InstallationWidget : MainWidget
         divider.SetHeight(1);
     }
 
-    public async Task Download()
+    public void Download()
     {
         string tempFile = Path.GetTempFileName();
-        fileDownloader = new Downloader(VersionMetadata.ProgramDownloadLink, tempFile);
         bool updatedLabel = false;
-        fileDownloader.OnProgress += x => Graphics.Schedule(() => 
+        DynamicCallbackManager<DownloadProgress> dcm = new DynamicCallbackManager<DownloadProgress>(100, x => Graphics.Schedule(() =>
         {
             if (Program.Window.Disposed) return;
             if (!updatedLabel)
@@ -58,25 +57,27 @@ internal class InstallationWidget : MainWidget
                 statusLabel.SetText("Downloading files...");
                 updatedLabel = true;
             }
-            progressBar.SetProgress(x.Factor);
+            progressBar.SetProgress((float)x.Factor);
             progressLabel.SetText($"Downloaded {x.ReadBytesToString()} of {x.TotalBytesToString()}");
             progressLabel.SetVisible(true);
             Graphics.Update();
-        });
-        fileDownloader.OnError += x => Graphics.Schedule(() => 
+        }), () => Graphics.Update());
+        bool success = false;
+        try
         {
-            Console.WriteLine(x.Message);
-            Console.WriteLine(x.StackTrace);
+            Logger.WriteLine("Downloading program files...");
+            success = Downloader.DownloadFile(VersionMetadata.ProgramDownloadLink, tempFile, null, dcm);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Downloader failed: " + ex.Message + "\n" + ex.StackTrace);
             statusLabel.SetText("Download failed. Try again later.");
             progressLabel.SetVisible(true);
             progressLabel.SetText($"Make sure you are connected to the internet and allow the program past anti-virus software.");
             progressBar.SetVisible(false);
             Program.Window.ForceClose = true;
-        });
-        await fileDownloader.DownloadAsync(TimeSpan.FromSeconds(10), null, 100);
-        if (fileDownloader.HadError || Program.Window.Disposed) return;
-        // Anything after an await can be on a different thread the the main one, so we schedule the rest of the code to be sure it runs on main.
-        Graphics.Schedule(() =>
+        }
+        if (success)
         {
             try
             {
@@ -85,6 +86,7 @@ internal class InstallationWidget : MainWidget
                 int updateFrequency = 16; // Update the screen every x ms
                 string destFolder = Path.GetFullPath(Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath)).Replace('\\', '/');
                 if (Directory.Exists(destFolder)) Directory.Delete(destFolder, true);
+                Logger.WriteLine("Initializing program files zip archive...");
                 Archive archive = new Archive(tempFile);
                 int len = archive.Files.Count;
                 for (int i = 0; i < len; i++)
@@ -103,24 +105,25 @@ internal class InstallationWidget : MainWidget
                 archive.Dispose();
                 File.Delete(tempFile);
                 if (Program.Window.Disposed) return;
+                Logger.WriteLine("Successfully extracted all files.");
                 string arg1 = Process.GetCurrentProcess().MainModule!.FileName; // This executable's filename
                 string arg2 = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.CoreLibraryPath, "updater.exe").Replace('/', '\\'); // .../Program Files/MK/Core/updater.exe
-                if (File.Exists(arg2) && arg1 != arg2)
+                if (File.Exists(arg2) && arg1 != arg2) File.Delete(arg2);
+                if (arg1 != arg2)
                 {
-                    File.Delete(arg2);
+                    Logger.WriteLine($"Copying installer from '{arg1}' to '{arg2}'.");
                     File.Copy(arg1, arg2);
                 }
                 Program.Window.MarkInstallationComplete();
             }
-            catch (Exception x)
+            catch (Exception ex)
             {
-                Console.WriteLine(x.Message);
-                Console.WriteLine(x.StackTrace);
+                Logger.Error("Archive extractor failed: " + ex.Message + "\n" + ex.StackTrace);
                 statusLabel.SetText("Extraction failed. Try again later.");
                 progressLabel.SetVisible(false);
                 progressBar.SetVisible(false);
                 Program.Window.ForceClose = true;
             }
-        });
+        }
     }
 }

@@ -140,15 +140,12 @@ internal class StepWidget : Widget
 
     public void MarkInstallationComplete()
     {
-        Graphics.Schedule(() =>
+        if (AutomaticUpdateMode)
         {
-            if (AutomaticUpdateMode)
-            {
-                Program.Window.ForceClose = true;
-                Program.Window.Close();
-                Program.RunExecutable();
-            }
-            else ClickedNext();
-        });
+            Program.Window.ForceClose = true;
+            Program.Window.Close();
+            Program.RunExecutable();
+        }
+        else ClickedNext();
     }
 }
