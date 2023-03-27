@@ -50,9 +50,13 @@ internal class InstallerWindow : UIWindow
         if (automaticUpdate)
         {
             stepWidget.SetAutomaticUpdateMode();
-            ((InstallationWidget) mainWidget).Download();
         }
         else stepWidget.SetBackStatus(false);
+    }
+
+    public void StartDownloadIfAutomatic()
+    {
+        if (mainWidget is InstallationWidget) ((InstallationWidget) mainWidget).Download();
     }
 
     public void SetMainWidget<T>() where T : MainWidget

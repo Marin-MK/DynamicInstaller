@@ -22,6 +22,7 @@ public class Program
         string currentParent = Path.GetDirectoryName(Environment.ProcessPath)!;
         Logger.Start(Path.Combine(currentParent, "log.txt"));
         bool AutomaticUpdate = args.Length == 1 && args[0] == "--automatic-update";
+        Logger.WriteLine("Dynamic Installer version 1.0");
         Logger.WriteLine($"Automatic Update flag is {AutomaticUpdate}");
         try
         {
@@ -55,6 +56,8 @@ public class Program
 
             Logger.WriteLine("Showing window...");
             Window.Show();
+
+            Window.StartDownloadIfAutomatic();
 
             Logger.WriteLine("Entering Amethyst UI loop");
             Amethyst.Run();
