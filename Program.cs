@@ -19,8 +19,10 @@ public class Program
 
     public static void Main(string[] args)
     {
-        string currentParent = Path.GetDirectoryName(Environment.ProcessPath)!;
-        Logger.Start(Path.Combine(currentParent, "log.txt"));
+        string appDataFolder = Path.Combine(MKUtils.MKUtils.AppDataFolder, "RPG Studio MK");
+		if (!Directory.Exists(appDataFolder)) Directory.CreateDirectory(appDataFolder);
+		Logger.Start(Path.Combine(appDataFolder, "updater-log.txt"));
+
         bool AutomaticUpdate = args.Length == 1 && args[0] == "--automatic-update";
         Logger.WriteLine("Dynamic Installer version 1.0");
         Logger.WriteLine($"Automatic Update flag is {AutomaticUpdate}");
