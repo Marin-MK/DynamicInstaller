@@ -13,9 +13,11 @@ internal class FinishedWidget : MainWidget
 {
     List<CheckBox> OptionBoxes = new List<CheckBox>();
 
-    List<(string ID, string Text)> Options = new List<(string ID, string Text)>()
+    List<(string ID, string Text, bool IsChecked, Func<bool>? Condition)> Options = new List<(string ID, string Text, bool Checked, Func<bool>? Condition)>()
     {
-        ("launch", $"Launch {VersionMetadata.ProgramDisplayName}"),
+        ("launch", $"Launch {VersionMetadata.ProgramDisplayName}", true, null),
+        ("shortcut", $"Create Desktop shortcut", true, () => Graphics.Platform == Platform.Windows),
+        ("startmenu", $"Create Start Menu shortcut", true, null),
     };
 
     public FinishedWidget(IContainer parent, StepWidget stepWidget) : base(parent, stepWidget)
@@ -30,16 +32,20 @@ internal class FinishedWidget : MainWidget
 
         foreach (string fileAssoc in VersionMetadata.ProgramFileAssociations)
         {
-            Options.Add((fileAssoc, $"Associate {fileAssoc} files with {VersionMetadata.ProgramDisplayName}"));
+            Options.Add((fileAssoc, $"Associate {fileAssoc} files with {VersionMetadata.ProgramDisplayName}", false, null));
         }
+
+        // Remove all options that do not meet their conditions
+        Options.RemoveAll(o => o.Condition is not null && !o.Condition());
 
         for (int i = 0; i < Options.Count; i++)
         {
             CheckBox box = new CheckBox(this);
-            box.SetPadding(40, 50 + i * 22);
+            box.SetPadding(40, 50 + i * 25);
             box.SetFont(Font.Get("Arial", 12));
             box.SetText(Options[i].Text);
             box.SetBlendMode(BlendMode.Blend);
+            box.SetChecked(Options[i].IsChecked);
             box.MinimumSize.Height = 20;
             OptionBoxes.Add(box);
         }

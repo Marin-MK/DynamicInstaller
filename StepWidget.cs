@@ -1,5 +1,6 @@
 ﻿using amethyst;
 using amethyst.Windows;
+using IWshRuntimeLibrary;
 using odl;
 using System;
 using System.Collections.Generic;
@@ -76,6 +77,29 @@ internal class StepWidget : Widget
             Program.Window.Close();
             List<string> fileAssociations = options.FindAll(x => x[0] == '.').ToList();
             Program.SetFileAssociations(fileAssociations);
+            if (options.Contains("shortcut"))
+            {
+				string deskDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+				using (StreamWriter writer = new StreamWriter(deskDir + "\\" + VersionMetadata.ProgramDisplayName + ".url"))
+				{
+                    string app = Program.ProgramExecutablePath.Replace('\\', '/');
+					writer.WriteLine("[InternetShortcut]");
+					writer.WriteLine("URL=file:///" + app);
+					writer.WriteLine("IconIndex=0");
+					writer.WriteLine("IconFile=" + app);
+				}
+			}
+            if (options.Contains("startmenu") && Graphics.Platform == Platform.Windows)
+            {
+				string commonStartMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu);
+				string shortcutPath = Path.Combine(commonStartMenuPath, "Programs", VersionMetadata.ProgramDisplayName + ".lnk");
+
+				WshShell shell = new WshShell();
+				IWshShortcut shortcut = (IWshShortcut) shell.CreateShortcut(shortcutPath);
+
+				shortcut.TargetPath = Program.ProgramExecutablePath.Replace('/', '\\');
+				shortcut.Save();
+			}
             if (options.Contains("launch"))
             {
                 Program.RunExecutable();
