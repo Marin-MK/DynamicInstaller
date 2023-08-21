@@ -81,11 +81,31 @@ internal class InstallationWidget : MainWidget
         {
             try
             {
-                statusLabel.SetText("Extracting files...");
+                statusLabel.SetText("Deleting old files...");
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 int updateFrequency = 16; // Update the screen every x ms
                 string destFolder = Path.GetFullPath(Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath)).Replace('\\', '/');
-                if (Directory.Exists(destFolder)) Directory.Delete(destFolder, true);
+                progressBar.SetProgress(0f);
+                while (Graphics.CanUpdate())
+                {
+                    try
+                    {
+                        if (Directory.Exists(destFolder)) Directory.Delete(destFolder, true);
+                        break;
+                    }
+                    catch (IOException ex)
+                    {
+                        if ((ex.HResult & 0x0000FFFF) == 32 || (ex.HResult & 0x0000FFFF) == 33)
+                        {
+							// A file/directory is in use by another process.
+							statusLabel.SetText("One or more program files is in use by another process.");
+                            progressLabel.SetText("Please close it so installation can continue.");
+                            Graphics.Update();
+						}
+                    }
+                }
+                if (!Graphics.CanUpdate()) return;
+                statusLabel.SetText("Extracting files...");
                 Logger.WriteLine("Initializing program files zip archive...");
                 Archive archive = new Archive(tempFile);
                 int len = archive.Files.Count;
