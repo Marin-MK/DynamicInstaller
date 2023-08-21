@@ -105,10 +105,10 @@ internal class StepWidget : Widget
         {
             Program.Window.SetHeaderText("Installing");
             Program.Window.SetDescriptionText($"Please wait while Setup installs {VersionMetadata.ProgramDisplayName} on your computer.");
-            Program.Window.SetMainWidget<InstallationWidget>();
             backButton.Dispose();
             nextButton.Dispose();
             Graphics.Update();
+            Program.Window.SetMainWidget<InstallationWidget>();
         }
         else if (LinkedWidget is InstallationWidget)
         {
