@@ -20,6 +20,7 @@ internal class StepWidget : Widget
     Button nextButton;
     Button backButton;
     bool AutomaticUpdateMode = false;
+    bool Unable = false;
 
     public StepWidget(IContainer parent) : base(parent)
     {
@@ -68,9 +69,20 @@ internal class StepWidget : Widget
         nextButton.SetEnabled(show);
     }
 
+    public void SetUnable(bool Unable)
+    {
+        this.Unable = Unable;
+        backButton.SetVisible(false);
+        nextButton.SetVisible(false);
+    }
+
     private void ClickedCancel()
     {
-        if (LinkedWidget is FinishedWidget)
+        if (this.Unable)
+        {
+            Program.Window.Close();
+        }
+        else if (LinkedWidget is FinishedWidget)
         {
             List<string> options = Program.Window.GetFinishOptions();
             Program.Window.ForceClose = true;
