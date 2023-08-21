@@ -1,6 +1,6 @@
 ﻿using amethyst;
 using amethyst.Windows;
-using IWshRuntimeLibrary;
+//using IWshRuntimeLibrary;
 using odl;
 using System;
 using System.Collections.Generic;
@@ -103,14 +103,14 @@ internal class StepWidget : Widget
 			}
             if (options.Contains("startmenu") && Graphics.Platform == Platform.Windows)
             {
-				string commonStartMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu);
-				string shortcutPath = Path.Combine(commonStartMenuPath, "Programs", VersionMetadata.ProgramDisplayName + ".lnk");
-
-				WshShell shell = new WshShell();
-				IWshShortcut shortcut = (IWshShortcut) shell.CreateShortcut(shortcutPath);
-
-				shortcut.TargetPath = Program.ProgramExecutablePath.Replace('/', '\\');
-				shortcut.Save();
+				//string commonStartMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu);
+				//string shortcutPath = Path.Combine(commonStartMenuPath, "Programs", VersionMetadata.ProgramDisplayName + ".lnk");
+                //
+				//WshShell shell = new WshShell();
+				//IWshShortcut shortcut = (IWshShortcut) shell.CreateShortcut(shortcutPath);
+                //
+				//shortcut.TargetPath = Program.ProgramExecutablePath.Replace('/', '\\');
+				//shortcut.Save();
 			}
             if (options.Contains("launch"))
             {

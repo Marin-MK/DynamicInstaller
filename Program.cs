@@ -24,7 +24,9 @@ public class Program
 		Logger.Start(Path.Combine(appDataFolder, "updater-log.txt"));
 
         bool AutomaticUpdate = args.Length == 1 && args[0] == "--automatic-update";
-        Logger.WriteLine("Dynamic Installer version 1.0");
+        Logger.WriteLine("Process Path: {0}", Environment.ProcessPath);
+        string installerVersion = FileVersionInfo.GetVersionInfo(Environment.ProcessPath).ProductVersion;
+        Logger.WriteLine("Dynamic Installer v{0}", MKUtils.MKUtils.TrimTrailingZeroes(installerVersion));
         Logger.WriteLine($"Automatic Update flag is {AutomaticUpdate}");
         try
         {
@@ -85,7 +87,7 @@ public class Program
         if (File.Exists(execFile) && File.Exists(versionFile))
         {
             Logger.WriteLine($"Found the the executable and version files for a copy to count at '{folder}'");
-            return File.ReadAllText(versionFile).TrimEnd();
+            return MKUtils.MKUtils.TrimTrailingZeroes(File.ReadAllText(versionFile).TrimEnd());
         }
         Logger.WriteLine("No existing installation found.");
         return null;

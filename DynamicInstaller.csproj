@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -10,19 +10,14 @@
     <Platforms>x64</Platforms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>logo-64x64.ico</ApplicationIcon>
+    <Title>Installer</Title>
+    <Version>1.0.0</Version>
+    <Authors>Marijn Herrebout</Authors>
+    <Copyright>Marijn Herrebout</Copyright>
+    <PackageProjectUrl>https://github.com/Marin-MK/DynamicInstaller</PackageProjectUrl>
+    <Product>Installer</Product>
+    <RepositoryUrl>https://github.com/Marin-MK/DynamicInstaller</RepositoryUrl>
   </PropertyGroup>
-
-  <ItemGroup>
-    <COMReference Include="IWshRuntimeLibrary">
-      <WrapperTool>tlbimp</WrapperTool>
-      <VersionMinor>0</VersionMinor>
-      <VersionMajor>1</VersionMajor>
-      <Guid>f935dc20-1cf0-11d0-adb9-00c04fd58a0b</Guid>
-      <Lcid>0</Lcid>
-      <Isolated>false</Isolated>
-      <EmbedInteropTypes>true</EmbedInteropTypes>
-    </COMReference>
-  </ItemGroup>
 
   <ItemGroup>
     <Content Include="logo-64x64.ico" />
