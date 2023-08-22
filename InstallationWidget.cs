@@ -4,12 +4,14 @@ using odl;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace DynamicInstaller;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 internal class InstallationWidget : MainWidget
 {
     Downloader fileDownloader;
@@ -126,14 +128,6 @@ internal class InstallationWidget : MainWidget
                 File.Delete(tempFile);
                 if (Program.Window.Disposed) return;
                 Logger.WriteLine("Successfully extracted all files.");
-                string arg1 = Process.GetCurrentProcess().MainModule!.FileName; // This executable's filename
-                string arg2 = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.CoreLibraryPath, "updater.exe").Replace('/', '\\'); // .../Program Files/MK/Core/updater.exe
-                if (File.Exists(arg2) && arg1 != arg2) File.Delete(arg2);
-                if (arg1 != arg2)
-                {
-                    Logger.WriteLine($"Copying installer from '{arg1}' to '{arg2}'.");
-                    File.Copy(arg1, arg2);
-                }
                 Program.Window.MarkInstallationComplete();
             }
             catch (Exception ex)
