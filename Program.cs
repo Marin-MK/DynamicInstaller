@@ -19,7 +19,7 @@ public class Program
 
     public static void Main(string[] args)
     {
-        string appDataFolder = Path.Combine(MKUtils.MKUtils.AppDataFolder, "RPG Studio MK");
+		string appDataFolder = Path.Combine(MKUtils.MKUtils.AppDataFolder, "RPG Studio MK");
 		if (!Directory.Exists(appDataFolder)) Directory.CreateDirectory(appDataFolder);
 		Logger.Start(Path.Combine(appDataFolder, "updater-log.txt"));
 
@@ -35,7 +35,18 @@ public class Program
                 Logger.WriteLine("Metadata download or verification failed.");
                 return;
             }
-            ExistingVersion = GetInstalledVersion();
+
+            // Copy this installer to Program Files
+			string arg1 = Process.GetCurrentProcess().MainModule!.FileName; // This executable's filename
+			string arg2 = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.InstallerInstallPath, VersionMetadata.InstallerInstallFilename).Replace('/', '\\');
+			if (File.Exists(arg2) && arg1 != arg2) File.Delete(arg2);
+			if (arg1 != arg2)
+			{
+				Logger.WriteLine($"Copying installer from '{arg1}' to '{arg2}'.");
+				File.Copy(arg1, arg2);
+			}
+
+			ExistingVersion = GetInstalledVersion();
             // Change text to say update from {old} to {new} version if an old version exists
             if (!ValidateDependencies())
             {
@@ -83,11 +94,14 @@ public class Program
         string folder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath);
         if (!Directory.Exists(folder)) return null;
         string execFile = Path.Combine(folder, VersionMetadata.ProgramLaunchFile);
-        string versionFile = Path.Combine(folder, "version.txt");
-        if (File.Exists(execFile) && File.Exists(versionFile))
+        if (File.Exists(execFile))
         {
-            Logger.WriteLine($"Found the the executable and version files for a copy to count at '{folder}'");
-            return MKUtils.MKUtils.TrimTrailingZeroes(File.ReadAllText(versionFile).TrimEnd());
+            execFile = execFile.Replace('\\', '/');
+            Logger.WriteLine("Found program executable at {0}", execFile);
+			string currentProgramVersion = FileVersionInfo.GetVersionInfo(execFile).ProductVersion;
+			currentProgramVersion = MKUtils.MKUtils.TrimTrailingZeroes(currentProgramVersion);
+            Logger.WriteLine("Found program version {0}", currentProgramVersion);
+            return currentProgramVersion;
         }
         Logger.WriteLine("No existing installation found.");
         return null;
