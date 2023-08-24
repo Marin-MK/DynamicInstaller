@@ -1,6 +1,5 @@
 ﻿using amethyst;
 using amethyst.Windows;
-//using IWshRuntimeLibrary;
 using odl;
 using System;
 using System.Collections.Generic;
@@ -92,25 +91,21 @@ internal class StepWidget : Widget
             if (options.Contains("shortcut"))
             {
 				string deskDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-				using (StreamWriter writer = new StreamWriter(deskDir + "\\" + VersionMetadata.ProgramDisplayName + ".url"))
-				{
-                    string app = Program.ProgramExecutablePath.Replace('\\', '/');
-					writer.WriteLine("[InternetShortcut]");
-					writer.WriteLine("URL=file:///" + app);
-					writer.WriteLine("IconIndex=0");
-					writer.WriteLine("IconFile=" + app);
-				}
+                string shortcutPath = deskDir + "\\" + VersionMetadata.ProgramDisplayName + ".url";
+				CreateShortcut(shortcutPath);	
 			}
             if (options.Contains("startmenu") && Graphics.Platform == Platform.Windows)
             {
-				//string commonStartMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu);
-				//string shortcutPath = Path.Combine(commonStartMenuPath, "Programs", VersionMetadata.ProgramDisplayName + ".lnk");
-                //
-				//WshShell shell = new WshShell();
-				//IWshShortcut shortcut = (IWshShortcut) shell.CreateShortcut(shortcutPath);
-                //
-				//shortcut.TargetPath = Program.ProgramExecutablePath.Replace('/', '\\');
-				//shortcut.Save();
+				string startMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
+				string shortcutPath = Path.Combine(startMenuPath, "Programs", VersionMetadata.ProgramDisplayName + ".lnk").Replace('/', '\\');
+				string app = Program.ProgramExecutablePath.Replace('/', '\\');
+				Process p = new Process();
+				p.StartInfo = new ProcessStartInfo();
+				p.StartInfo.FileName = @"powershell.exe";
+				p.StartInfo.Arguments = $"\"$s=(New-Object -COM WScript.Shell).CreateShortcut(\\\"{shortcutPath}\\\"); $s.TargetPath=\\\"{app}\\\"; $s.Save(); echo 'Success';\"";
+				p.StartInfo.UseShellExecute = false;
+				p.StartInfo.CreateNoWindow = true;
+				p.Start();
 			}
             if (options.Contains("launch"))
             {
@@ -127,6 +122,19 @@ internal class StepWidget : Widget
             Program.Window.Close();
         }
     }
+
+    private void CreateShortcut(string path)
+    {
+		using (StreamWriter writer = new StreamWriter(path))
+		{
+			string app = Program.ProgramExecutablePath.Replace('\\', '/');
+            Logger.WriteLine("Creating shortcut at {0} pointing to {1}", path, app);
+			writer.WriteLine("[InternetShortcut]");
+			writer.WriteLine("URL=file:///" + app);
+			writer.WriteLine("IconIndex=0");
+			writer.WriteLine("IconFile=" + app);
+		}
+	}
 
     private void ClickedNext()
     {
