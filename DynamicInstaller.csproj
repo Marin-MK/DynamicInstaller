@@ -1,33 +1,43 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <SignAssembly>False</SignAssembly>
-    <IncludeSymbols>False</IncludeSymbols>
-    <Platforms>x64</Platforms>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>logo-64x64.ico</ApplicationIcon>
-    <Title>Installer</Title>
-    <Version>1.2</Version>
-    <Authors>Marijn Herrebout</Authors>
-    <Copyright>Marijn Herrebout</Copyright>
-    <PackageProjectUrl>https://github.com/Marin-MK/DynamicInstaller</PackageProjectUrl>
-    <Product>Installer</Product>
-    <RepositoryUrl>https://github.com/Marin-MK/DynamicInstaller</RepositoryUrl>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <SignAssembly>False</SignAssembly>
+        <IncludeSymbols>False</IncludeSymbols>
+        <Platforms>x64</Platforms>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <ApplicationIcon>logo-64x64.ico</ApplicationIcon>
+        <Title>Installer</Title>
+        <Version>1.2</Version>
+        <Authors>Marijn Herrebout</Authors>
+        <Copyright>Marijn Herrebout</Copyright>
+        <PackageProjectUrl>https://github.com/Marin-MK/DynamicInstaller</PackageProjectUrl>
+        <Product>Installer</Product>
+        <RepositoryUrl>https://github.com/Marin-MK/DynamicInstaller</RepositoryUrl>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <Content Include="logo-64x64.ico" />
-  </ItemGroup>
+	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
+		<Optimize>False</Optimize>
+		<OutputPath>build/Debug</OutputPath>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\amethyst\amethyst.csproj" />
-    <ProjectReference Include="..\MKUtils\MKUtils.csproj" />
-    <ProjectReference Include="..\NativeLibraryLoader\NativeLibraryLoader.csproj" />
-    <ProjectReference Include="..\odl\odl.csproj" />
-  </ItemGroup>
+	<PropertyGroup Condition="'$(Configuration)'=='Release'">
+		<Optimize>True</Optimize>
+		<OutputPath>build/Release</OutputPath>
+	</PropertyGroup>
+
+    <ItemGroup>
+        <Content Include="logo-64x64.ico" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\amethyst\amethyst.csproj" />
+        <ProjectReference Include="..\MKUtils\MKUtils.csproj" />
+        <ProjectReference Include="..\NativeLibraryLoader\NativeLibraryLoader.csproj" />
+        <ProjectReference Include="..\odl\odl.csproj" />
+    </ItemGroup>
 
 </Project>

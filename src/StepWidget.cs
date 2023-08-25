@@ -1,13 +1,7 @@
 ﻿using amethyst;
 using amethyst.Windows;
 using odl;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace DynamicInstaller.src;
 

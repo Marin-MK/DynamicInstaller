@@ -1,10 +1,8 @@
 ﻿global using MKUtils;
-
 using amethyst;
 using NativeLibraryLoader;
 using odl;
 using System.Diagnostics;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace DynamicInstaller.src;
