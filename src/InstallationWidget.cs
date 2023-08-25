@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DynamicInstaller;
+namespace DynamicInstaller.src;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 internal class InstallationWidget : MainWidget
@@ -99,11 +99,11 @@ internal class InstallationWidget : MainWidget
                     {
                         if ((ex.HResult & 0x0000FFFF) == 32 || (ex.HResult & 0x0000FFFF) == 33)
                         {
-							// A file/directory is in use by another process.
-							statusLabel.SetText("One or more program files is in use by another process.");
+                            // A file/directory is in use by another process.
+                            statusLabel.SetText("One or more program files is in use by another process.");
                             progressLabel.SetText("Please close it so installation can continue.");
                             Graphics.Update();
-						}
+                        }
                     }
                 }
                 if (!Graphics.CanUpdate()) return;
@@ -122,7 +122,7 @@ internal class InstallationWidget : MainWidget
                         Graphics.Update();
                     }
                     file.Extract(destFolder, true);
-                    progressBar.SetProgress((float) (i + 1) / len);
+                    progressBar.SetProgress((float)(i + 1) / len);
                 }
                 archive.Dispose();
                 File.Delete(tempFile);

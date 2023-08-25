@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DynamicInstaller;
+namespace DynamicInstaller.src;
 
 internal class Logo
 {
@@ -745,6 +745,6 @@ internal class Logo
     {
         var decoder = new PNGDecoder(RawData);
         (byte[] imgData, int width, int height) = decoder.Decode(true);
-        Logo.Bitmap = new Bitmap(imgData, width, height);
+        Bitmap = new Bitmap(imgData, width, height);
     }
 }

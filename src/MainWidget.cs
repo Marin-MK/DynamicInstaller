@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DynamicInstaller;
+namespace DynamicInstaller.src;
 
 internal class MainWidget : Widget
 {
@@ -13,6 +13,6 @@ internal class MainWidget : Widget
 
     public MainWidget(IContainer parent, StepWidget stepWidget) : base(parent)
     {
-        this.StepWidget = stepWidget;
+        StepWidget = stepWidget;
     }
 }

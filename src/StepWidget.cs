@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace DynamicInstaller;
+namespace DynamicInstaller.src;
 
 internal class StepWidget : Widget
 {
@@ -39,7 +39,7 @@ internal class StepWidget : Widget
         nextButton.SetBlendMode(BlendMode.Blend);
         nextButton.SetBottomDocked(true);
         nextButton.SetRightDocked(true);
-        nextButton.SetPadding(0, 0, 16+110, 16);
+        nextButton.SetPadding(0, 0, 16 + 110, 16);
         nextButton.SetSize(100, 30);
         nextButton.OnPressed += _ => ClickedNext();
         backButton = new Button(this);
@@ -48,14 +48,14 @@ internal class StepWidget : Widget
         backButton.SetBlendMode(BlendMode.Blend);
         backButton.SetBottomDocked(true);
         backButton.SetRightDocked(true);
-        backButton.SetPadding(0, 0, 16+110*2, 16);
+        backButton.SetPadding(0, 0, 16 + 110 * 2, 16);
         backButton.SetSize(100, 30);
         backButton.OnPressed += _ => ClickedBack();
     }
 
     public void LinkWidget(MainWidget linkedWidget)
     {
-        this.LinkedWidget = linkedWidget;
+        LinkedWidget = linkedWidget;
     }
 
     public void SetBackStatus(bool show)
@@ -77,7 +77,7 @@ internal class StepWidget : Widget
 
     private void ClickedCancel()
     {
-        if (this.Unable)
+        if (Unable)
         {
             Program.Window.Close();
         }
@@ -90,23 +90,24 @@ internal class StepWidget : Widget
             Program.SetFileAssociations(fileAssociations);
             if (options.Contains("shortcut"))
             {
-				string deskDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                string deskDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                 string shortcutPath = deskDir + "\\" + VersionMetadata.ProgramDisplayName + ".url";
-				CreateShortcut(shortcutPath);	
-			}
+                CreateShortcut(shortcutPath);
+            }
             if (options.Contains("startmenu") && Graphics.Platform == Platform.Windows)
             {
-				string startMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
-				string shortcutPath = Path.Combine(startMenuPath, "Programs", VersionMetadata.ProgramDisplayName + ".lnk").Replace('/', '\\');
-				string app = Program.ProgramExecutablePath.Replace('/', '\\');
-				Process p = new Process();
-				p.StartInfo = new ProcessStartInfo();
-				p.StartInfo.FileName = @"powershell.exe";
-				p.StartInfo.Arguments = $"\"$s=(New-Object -COM WScript.Shell).CreateShortcut(\\\"{shortcutPath}\\\"); $s.TargetPath=\\\"{app}\\\"; $s.Save(); echo 'Success';\"";
-				p.StartInfo.UseShellExecute = false;
-				p.StartInfo.CreateNoWindow = true;
-				p.Start();
-			}
+                string startMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
+                string shortcutPath = Path.Combine(startMenuPath, "Programs", VersionMetadata.ProgramDisplayName + ".lnk").Replace('/', '\\');
+                string app = Program.ProgramExecutablePath.Replace('/', '\\');
+                Logger.WriteLine("Creating start menu shortcut at {0} pointing to {1}", shortcutPath, app);
+                Process p = new Process();
+                p.StartInfo = new ProcessStartInfo();
+                p.StartInfo.FileName = @"powershell.exe";
+                p.StartInfo.Arguments = $"\"$s=(New-Object -COM WScript.Shell).CreateShortcut(\\\"{shortcutPath}\\\"); $s.TargetPath=\\\"{app}\\\"; $s.Save(); echo 'Success';\"";
+                p.StartInfo.UseShellExecute = false;
+                p.StartInfo.CreateNoWindow = true;
+                p.Start();
+            }
             if (options.Contains("launch"))
             {
                 Program.RunExecutable();
@@ -125,16 +126,16 @@ internal class StepWidget : Widget
 
     private void CreateShortcut(string path)
     {
-		using (StreamWriter writer = new StreamWriter(path))
-		{
-			string app = Program.ProgramExecutablePath.Replace('\\', '/');
+        using (StreamWriter writer = new StreamWriter(path))
+        {
+            string app = Program.ProgramExecutablePath.Replace('\\', '/');
             Logger.WriteLine("Creating shortcut at {0} pointing to {1}", path, app);
-			writer.WriteLine("[InternetShortcut]");
-			writer.WriteLine("URL=file:///" + app);
-			writer.WriteLine("IconIndex=0");
-			writer.WriteLine("IconFile=" + app);
-		}
-	}
+            writer.WriteLine("[InternetShortcut]");
+            writer.WriteLine("URL=file:///" + app);
+            writer.WriteLine("IconIndex=0");
+            writer.WriteLine("IconFile=" + app);
+        }
+    }
 
     private void ClickedNext()
     {

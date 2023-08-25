@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DynamicInstaller;
+namespace DynamicInstaller.src;
 
 internal class MultilineReadOnlyTextBox : Widget
 {
@@ -20,7 +20,7 @@ internal class MultilineReadOnlyTextBox : Widget
 
     public MultilineReadOnlyTextBox(IContainer parent) : base(parent)
     {
-        Sprites["box"] = new Sprite(this.Viewport);
+        Sprites["box"] = new Sprite(Viewport);
 
         Container scrollContainer = new Container(this);
         scrollContainer.SetDocked(true);

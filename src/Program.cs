@@ -7,7 +7,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace DynamicInstaller;
+namespace DynamicInstaller.src;
 
 public class Program
 {
@@ -19,9 +19,9 @@ public class Program
 
     public static void Main(string[] args)
     {
-		string appDataFolder = Path.Combine(MKUtils.MKUtils.AppDataFolder, "RPG Studio MK");
-		if (!Directory.Exists(appDataFolder)) Directory.CreateDirectory(appDataFolder);
-		Logger.Start(Path.Combine(appDataFolder, "updater-log.txt"));
+        string appDataFolder = Path.Combine(MKUtils.MKUtils.AppDataFolder, "RPG Studio MK");
+        if (!Directory.Exists(appDataFolder)) Directory.CreateDirectory(appDataFolder);
+        Logger.Start(Path.Combine(appDataFolder, "updater-log.txt"));
 
         bool AutomaticUpdate = args.Length == 1 && args[0] == "--automatic-update";
         Logger.WriteLine("Process Path: {0}", Environment.ProcessPath);
@@ -37,16 +37,16 @@ public class Program
             }
 
             // Copy this installer to Program Files
-			string arg1 = Process.GetCurrentProcess().MainModule!.FileName; // This executable's filename
-			string arg2 = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.InstallerInstallPath, VersionMetadata.InstallerInstallFilename).Replace('/', '\\');
-			if (File.Exists(arg2) && arg1 != arg2) File.Delete(arg2);
-			if (arg1 != arg2)
-			{
-				Logger.WriteLine($"Copying installer from '{arg1}' to '{arg2}'.");
-				File.Copy(arg1, arg2);
-			}
+            string arg1 = Process.GetCurrentProcess().MainModule!.FileName; // This executable's filename
+            string arg2 = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.InstallerInstallPath, VersionMetadata.InstallerInstallFilename).Replace('/', '\\');
+            if (File.Exists(arg2) && arg1 != arg2) File.Delete(arg2);
+            if (arg1 != arg2)
+            {
+                Logger.WriteLine($"Copying installer from '{arg1}' to '{arg2}'.");
+                File.Copy(arg1, arg2);
+            }
 
-			ExistingVersion = GetInstalledVersion();
+            ExistingVersion = GetInstalledVersion();
             // Change text to say update from {old} to {new} version if an old version exists
             if (!ValidateDependencies())
             {
@@ -98,8 +98,8 @@ public class Program
         {
             execFile = execFile.Replace('\\', '/');
             Logger.WriteLine("Found program executable at {0}", execFile);
-			string currentProgramVersion = FileVersionInfo.GetVersionInfo(execFile).ProductVersion;
-			currentProgramVersion = MKUtils.MKUtils.TrimTrailingZeroes(currentProgramVersion);
+            string currentProgramVersion = FileVersionInfo.GetVersionInfo(execFile).ProductVersion;
+            currentProgramVersion = MKUtils.MKUtils.TrimTrailingZeroes(currentProgramVersion);
             Logger.WriteLine("Found program version {0}", currentProgramVersion);
             return currentProgramVersion;
         }
@@ -227,7 +227,7 @@ public class Program
         if (result == 0) // Yes
         {
             Logger.WriteLine("Closing window...");
-            Program.Window.Dispose();
+            Window.Dispose();
         }
     }
 }

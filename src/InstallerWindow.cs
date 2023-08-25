@@ -2,11 +2,12 @@
 using amethyst.Windows;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DynamicInstaller;
+namespace DynamicInstaller.src;
 
 internal class InstallerWindow : UIWindow
 {
@@ -56,16 +57,20 @@ internal class InstallerWindow : UIWindow
 
     public void StartDownloadIfAutomatic()
     {
-        if (mainWidget is InstallationWidget) ((InstallationWidget) mainWidget).Download();
+        if (mainWidget is InstallationWidget) ((InstallationWidget)mainWidget).Download();
     }
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EULAWidget))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FinishedWidget))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HeaderWidget))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WelcomeWidget))]
     public void SetMainWidget<T>() where T : MainWidget
     {
         mainWidget.Dispose();
-        mainWidget = (MainWidget) Activator.CreateInstance(typeof(T), new object[] { mainGrid, stepWidget })!;
+        mainWidget = (MainWidget)Activator.CreateInstance(typeof(T), new object[] { mainGrid, stepWidget })!;
         mainWidget.SetGridRow(1);
         stepWidget.LinkWidget(mainWidget);
-        if (mainWidget is InstallationWidget) ((InstallationWidget) mainWidget).Download();
+        if (mainWidget is InstallationWidget) ((InstallationWidget)mainWidget).Download();
     }
 
     public void SetHeaderText(string text)
@@ -85,7 +90,7 @@ internal class InstallerWindow : UIWindow
 
     public List<string> GetFinishOptions()
     {
-        return ((FinishedWidget) mainWidget).GetFinishOptions();
+        return ((FinishedWidget)mainWidget).GetFinishOptions();
     }
 
     public bool SkipExitPrompt => mainWidget is FinishedWidget;

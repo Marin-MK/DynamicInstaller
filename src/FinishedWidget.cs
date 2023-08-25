@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DynamicInstaller;
+namespace DynamicInstaller.src;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 internal class FinishedWidget : MainWidget
