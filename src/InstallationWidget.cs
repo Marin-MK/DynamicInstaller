@@ -18,13 +18,13 @@ internal class InstallationWidget : MainWidget
     {
         SetBackgroundColor(SystemColors.LightBorderFiller);
         statusLabel = new Label(this);
-        statusLabel.SetFont(Font.Get("Arial", 12));
+        statusLabel.SetFont(Program.Font);
         statusLabel.SetBlendMode(BlendMode.Blend);
         statusLabel.SetPadding(40, 20);
         statusLabel.SetText("Connecting to server...");
 
         progressLabel = new Label(this);
-        progressLabel.SetFont(Font.Get("Arial", 12));
+        progressLabel.SetFont(Program.Font);
         progressLabel.SetBlendMode(BlendMode.Blend);
         progressLabel.SetPadding(40, 42);
         progressLabel.SetVisible(false);
@@ -63,7 +63,12 @@ internal class InstallationWidget : MainWidget
         try
         {
             Logger.WriteLine("Downloading program files...");
-            success = Downloader.DownloadFile(VersionMetadata.ProgramDownloadLink, tempFile, null, dcm);
+            success = Downloader.DownloadFile(VersionMetadata.ProgramDownloadLink[Graphics.Platform switch
+            {
+                Platform.Windows => "windows",
+                Platform.Linux => "linux",
+                _ => throw new NotImplementedException()
+            }], tempFile, null, dcm);
         }
         catch (Exception ex)
         {
@@ -123,6 +128,26 @@ internal class InstallationWidget : MainWidget
                 File.Delete(tempFile);
                 if (Program.Window.Disposed) return;
                 Logger.WriteLine("Successfully extracted all files.");
+                if (Graphics.Platform == Platform.Linux)
+                {
+                    string versionFile = Path.Combine(destFolder, "VERSION");
+					Logger.WriteLine("Writing version file with content {0} to {1}", VersionMetadata.ProgramVersion, versionFile);
+                    File.WriteAllText(versionFile, VersionMetadata.ProgramVersion);
+                    Logger.WriteLine("Ensuring the executable is marked as executable...");
+                    Process eprc = new Process();
+                    eprc.StartInfo = new ProcessStartInfo("chmod");
+                    string executablePath = Path.Combine(destFolder, VersionMetadata.ProgramLaunchFile[Graphics.Platform switch
+                    {
+                    	odl.Platform.Windows => "windows",
+                    	odl.Platform.Linux => "linux",
+                    	_ => throw new NotImplementedException()
+                    }]).Replace('\\', '/');
+                    eprc.StartInfo.ArgumentList.Add("+x");
+                    eprc.StartInfo.ArgumentList.Add(executablePath);
+                    eprc.Start();
+                    eprc.WaitForExit();
+                    Logger.WriteLine("Marked executable '{0}' as executable.", executablePath);
+                }
                 Program.Window.MarkInstallationComplete();
             }
             catch (Exception ex)

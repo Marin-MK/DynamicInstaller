@@ -2,7 +2,7 @@
 
 public static class Logger
 {
-    private static MKUtils.Logger Instance = new MKUtils.Logger();
+    public static MKUtils.Logger Instance = new MKUtils.Logger();
 
     public static void Start()
     {

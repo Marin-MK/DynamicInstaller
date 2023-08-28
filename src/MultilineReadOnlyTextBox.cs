@@ -22,7 +22,7 @@ internal class MultilineReadOnlyTextBox : Widget
         scrollContainer.SetPadding(5, 5, 30, 5);
 
         Label = new MultilineLabel(scrollContainer);
-        Label.SetFont(Font.Get("Arial", 12));
+        Label.SetFont(Program.Font);
         Label.SetHDocked(true);
 
         VScrollBar vs = new VScrollBar(this);

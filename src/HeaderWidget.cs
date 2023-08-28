@@ -14,13 +14,13 @@ internal class HeaderWidget : Widget
         SetBackgroundColor(SystemColors.ControlBackground);
 
         HeaderLabel = new Label(this);
-        HeaderLabel.SetFont(Font.Get("arialbd", 12));
+        HeaderLabel.SetFont(Program.BoldFont);
         HeaderLabel.SetText($"{VersionMetadata.ProgramDisplayName} {VersionMetadata.ProgramVersion} {(automaticUpdate ? "updater" : "installer")}");
         HeaderLabel.SetPosition(20, 20);
         HeaderLabel.SetBlendMode(BlendMode.Blend);
 
         DescriptionLabel = new Label(this);
-        DescriptionLabel.SetFont(Font.Get("arial", 12));
+        DescriptionLabel.SetFont(Program.Font);
         DescriptionLabel.SetText($"Welcome to the {(automaticUpdate ? "updater" : "installer")} for {VersionMetadata.ProgramDisplayName}");
         DescriptionLabel.SetPosition(40, 50);
         DescriptionLabel.SetBlendMode(BlendMode.Blend);

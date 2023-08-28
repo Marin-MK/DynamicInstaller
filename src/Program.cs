@@ -3,6 +3,7 @@ using amethyst;
 using NativeLibraryLoader;
 using odl;
 using System.Diagnostics;
+using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace DynamicInstaller.src;
@@ -10,24 +11,73 @@ namespace DynamicInstaller.src;
 public class Program
 {
     internal static string? DependencyFolder;
-    internal static string ProgramExecutablePath => Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath, VersionMetadata.ProgramLaunchFile).Replace('/', '\\');
+    internal static string ProgramLaunchFile => VersionMetadata.ProgramLaunchFile[Graphics.Platform switch
+    {
+        odl.Platform.Windows => "windows",
+        odl.Platform.Linux => "linux",
+        _ => throw new NotImplementedException(),
+    }];
+    internal static string ProgramExecutablePath => Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath, ProgramLaunchFile).Replace('/', '\\');
+    internal static string InstallerInstallFilename => VersionMetadata.InstallerInstallFilename[Graphics.Platform switch
+    {
+        odl.Platform.Windows => "windows",
+        odl.Platform.Linux => "linux",
+        _ => throw new NotImplementedException()
+    }];
     internal static string? ExistingVersion;
 
     internal static InstallerWindow Window;
+    internal static Font Font;
+    internal static Font BoldFont;
 
-    public static void Main(string[] args)
+    private delegate uint GetEUID();
+    private static GetEUID geteuid;
+
+	public static void Main(string[] args)
     {
-        string appDataFolder = Path.Combine(MKUtils.MKUtils.AppDataFolder, "RPG Studio MK");
-        if (!Directory.Exists(appDataFolder)) Directory.CreateDirectory(appDataFolder);
-        Logger.Start(Path.Combine(appDataFolder, "updater-log.txt"));
+    	if (Graphics.Platform == odl.Platform.Linux)
+        {
+            NativeLibrary libc = NativeLibrary.Load("libc.so.6");
+            geteuid = libc.GetFunction<GetEUID>("geteuid");
+            if (!IsLinuxAdmin())
+            {
+                Console.WriteLine("ERROR: The installer requires administrator permissions. Please re-run the program with 'sudo'.");
+                return;
+            }
+        }
+
+        
+        string appDataFolder = Path.Combine(MKUtils.MKUtils.AppDataFolder, Graphics.Platform == odl.Platform.Windows ? "RPG Studio MK" : ".rpg-studio-mk");
+        MakeFolderAsNonRoot(appDataFolder);
+
+#if DEBUG
+        Logger.Start();
+#else
+        string updaterLogPath = Path.Combine(appDataFolder, "updater-log.txt").Replace('\\', '/');
+        Logger.Start(updaterLogPath);
+#endif
+
+		Logger.WriteLine("AppDataFolder: {0}", MKUtils.MKUtils.AppDataFolder);
 
         bool AutomaticUpdate = args.Length == 1 && args[0] == "--automatic-update";
         Logger.WriteLine("Process Path: {0}", Environment.ProcessPath);
-        string installerVersion = FileVersionInfo.GetVersionInfo(Environment.ProcessPath).ProductVersion;
-        Logger.WriteLine("Dynamic Installer v{0}", MKUtils.MKUtils.TrimTrailingZeroes(installerVersion));
+        string installerVersion = null;
+        if (Graphics.Platform == odl.Platform.Windows)
+        {
+            installerVersion = FileVersionInfo.GetVersionInfo(Environment.ProcessPath)?.ProductVersion ?? "0";
+        }
+        else if (Graphics.Platform == odl.Platform.Linux)
+        {
+            string exeParent = Path.GetDirectoryName(Environment.ProcessPath);
+            string versionFile = Path.Combine(exeParent, "VERSION").Replace('\\', '/');
+            if (File.Exists(versionFile)) installerVersion = File.ReadAllText(versionFile);
+            else installerVersion = "0";
+        }
+        Logger.WriteLine("Dynamic Installer v{0}", MKUtils.MKUtils.TrimVersion(installerVersion));
         Logger.WriteLine($"Automatic Update flag is {AutomaticUpdate}");
         try
         {
+            MKUtils.Logger.Instance = Logger.Instance;
             if (!VersionMetadata.Load())
             {
                 Logger.WriteLine("Metadata download or verification failed.");
@@ -35,24 +85,54 @@ public class Program
             }
 
             // Copy this installer to Program Files
-            string arg1 = Process.GetCurrentProcess().MainModule!.FileName; // This executable's filename
-            string arg2 = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.InstallerInstallPath, VersionMetadata.InstallerInstallFilename).Replace('/', '\\');
+            string arg1 = Process.GetCurrentProcess().MainModule!.FileName.Replace('\\', '/'); // This executable's filename
+            string arg2Parent = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.InstallerInstallPath).Replace('\\', '/');
+            string arg2 = Path.Combine(arg2Parent, InstallerInstallFilename).Replace('\\', '/');
             if (File.Exists(arg2) && arg1 != arg2) File.Delete(arg2);
             if (arg1 != arg2)
             {
                 Logger.WriteLine($"Copying installer from '{arg1}' to '{arg2}'.");
+                if (!Directory.Exists(arg2Parent)) Directory.CreateDirectory(arg2Parent);
                 File.Copy(arg1, arg2);
+                if (Graphics.Platform == odl.Platform.Linux)
+                {
+                    // Write version file
+                    // We make a big assumption here; that the installer being run is the latest version of the installer.
+                    // There is no way to verify this, though.
+                    // The alternative is not writing a version file, but that would mean the editor would be required
+                    // to download the installer on initial load, which is rather intrusive.
+                    File.WriteAllText(Path.Combine(arg2Parent, "VERSION"), VersionMetadata.InstallerVersion);
+                }
             }
 
             ExistingVersion = GetInstalledVersion();
-            // Change text to say update from {old} to {new} version if an old version exists
             if (!ValidateDependencies())
             {
                 Logger.WriteLine("Failed to install or validate dependencies.");
                 return;
             }
             Logger.WriteLine("Starting Amethyst...");
+            Font.AddFontPath("/usr/share/fonts");
+            Font.AddFontPath("/usr/share/fonts/truetype");
+            Font.AddFontPath("/usr/share/fonts/truetype/ubuntu");
             Amethyst.Start(GetPathInfo(), false, false);
+            string fontName = null;
+            string boldFontName = null;
+            switch (Graphics.Platform)
+            {
+                case odl.Platform.Windows:
+                    fontName = "Arial";
+                    boldFontName = "arialbd";
+                    break;
+                case odl.Platform.Linux:
+                    fontName = "Ubuntu-R";
+                    boldFontName = "Ubuntu-B";
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
+            Program.Font = odl.Font.Get(fontName, 12);
+            Program.BoldFont = odl.Font.Get(boldFontName, 12);
 
             Logger.WriteLine("Creating window...");
             Window = new InstallerWindow(800, AutomaticUpdate ? 240 : 480);
@@ -86,20 +166,65 @@ public class Program
         Logger.Stop();
     }
 
-    private static string? GetInstalledVersion()
+    public static void MakeFolderAsNonRoot(string folder)
+    {
+        if (Directory.Exists(folder)) return;
+        if (Graphics.Platform == odl.Platform.Linux && IsLinuxAdmin())
+        {
+            Process prcs = new Process();
+            prcs.StartInfo = new ProcessStartInfo("runuser");
+            string user = Environment.GetEnvironmentVariable("SUDO_USER");
+            prcs.StartInfo.Arguments = $"-l {user} -c \"mkdir '{folder}'\"";
+            prcs.Start();
+            prcs.WaitForExit();
+        }
+        else Directory.CreateDirectory(folder);
+	}
+
+	public static bool IsLinuxAdmin()
+	{
+		return geteuid() == 0;
+	}
+
+	private static string? GetInstalledVersion()
     {
         Logger.WriteLine("Locating existing installation...");
         string folder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath);
+        Logger.WriteLine("No existing installation found, program folder does not exist yet at {0}", folder);
         if (!Directory.Exists(folder)) return null;
-        string execFile = Path.Combine(folder, VersionMetadata.ProgramLaunchFile);
-        if (File.Exists(execFile))
+        if (Graphics.Platform == odl.Platform.Windows)
         {
-            execFile = execFile.Replace('\\', '/');
-            Logger.WriteLine("Found program executable at {0}", execFile);
-            string currentProgramVersion = FileVersionInfo.GetVersionInfo(execFile).ProductVersion;
-            currentProgramVersion = MKUtils.MKUtils.TrimTrailingZeroes(currentProgramVersion);
-            Logger.WriteLine("Found program version {0}", currentProgramVersion);
-            return currentProgramVersion;
+            // Read ProductVersion from the assembly
+            string execFile = Path.Combine(folder, ProgramLaunchFile).Replace('\\', '/');
+            Logger.WriteLine("Searching for executable at {0}...", execFile);
+            if (File.Exists(execFile))
+            {
+                Logger.WriteLine("Found program executable at {0}", execFile);
+                string currentProgramVersion = FileVersionInfo.GetVersionInfo(execFile).ProductVersion;
+                currentProgramVersion = MKUtils.MKUtils.TrimVersion(currentProgramVersion);
+                Logger.WriteLine("Found program version {0}", currentProgramVersion);
+                return currentProgramVersion;
+            }
+        }
+        else if (Graphics.Platform == odl.Platform.Linux)
+        {
+            // Linux cannot read ProductVersion from assemblies, so we use a version file instead
+            string versionFile = Path.Combine(folder, "VERSION").Replace('\\', '/');
+            Logger.WriteLine("Searching for version file at {0}...", versionFile);
+            if (File.Exists(versionFile))
+            {
+                string currentProgramVersion = File.ReadAllText(versionFile);
+                Logger.WriteLine("Found version file at {0}", versionFile);
+                if (!string.IsNullOrEmpty(currentProgramVersion))
+                    currentProgramVersion = MKUtils.MKUtils.TrimVersion(currentProgramVersion);
+                if (string.IsNullOrEmpty(currentProgramVersion)) currentProgramVersion = "0";
+                Logger.WriteLine("Found program version {0}", currentProgramVersion);
+                return currentProgramVersion;
+            }
+        }
+        else
+        {
+            throw new NotImplementedException();
         }
         Logger.WriteLine("No existing installation found.");
         return null;
@@ -111,7 +236,12 @@ public class Program
         {
             if (!InstallDependencies()) return false;
         }
-        DependencyFolder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.CoreLibraryPath, "lib", "windows");
+        DependencyFolder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.CoreLibraryPath, "lib", Graphics.Platform switch
+        {
+            odl.Platform.Windows => "windows",
+            odl.Platform.Linux => "linux",
+            _ => throw new NotImplementedException()
+        }).Replace('\\', '/');
         return true;
     }
 
@@ -124,7 +254,15 @@ public class Program
         windows.AddPath("libpng", DependencyFolder + "/libpng16-16.dll");
         windows.AddPath("libsdl2_ttf", DependencyFolder + "/SDL2_ttf.dll");
         windows.AddPath("libfreetype", DependencyFolder + "/libfreetype-6.dll");
-        return PathInfo.Create(windows);
+
+        PathPlatformInfo linux = new PathPlatformInfo(NativeLibraryLoader.Platform.Linux);
+        linux.AddPath("libsdl2", DependencyFolder + "/SDL2.so");
+        linux.AddPath("libz", DependencyFolder + "/libz.so");
+        linux.AddPath("libsdl2_image", DependencyFolder + "/SDL2_image.so");
+        linux.AddPath("libpng", DependencyFolder + "/libpng16-16.so");
+        linux.AddPath("libsdl2_ttf", DependencyFolder + "/SDL2_ttf.so");
+        linux.AddPath("libfreetype", DependencyFolder + "/libfreetype-6.so");
+        return PathInfo.Create(windows, linux);
     }
 
     private static bool HasAllDependencies()
@@ -212,10 +350,29 @@ public class Program
     internal static void RunExecutable()
     {
         Logger.WriteLine("Launching program...");
-        Process proc = new Process();
-        proc.StartInfo = new ProcessStartInfo(ProgramExecutablePath);
-        proc.StartInfo.UseShellExecute = false;
-        proc.Start();
+        string path = Graphics.Platform switch
+        {
+        	odl.Platform.Windows => ProgramExecutablePath.Replace('/', '\\'),
+        	odl.Platform.Linux => ProgramExecutablePath.Replace('\\', '/'),
+        	_ => throw new NotImplementedException()
+        };
+        if (Graphics.Platform == odl.Platform.Windows)
+        {
+            Process proc = new Process();
+            proc.StartInfo = new ProcessStartInfo(path);
+            proc.StartInfo.UseShellExecute = false;
+            proc.Start();
+        }
+        else if (Graphics.Platform == odl.Platform.Linux)
+        {
+			Process prcs = new Process();
+			prcs.StartInfo = new ProcessStartInfo("/bin/bash");
+            string user = Environment.GetEnvironmentVariable("SUDO_USER");
+			prcs.StartInfo.Arguments = $"-c \"su {user} -c \\\"'{path}'\\\"\"";
+            Logger.WriteLine("Launching the program with `bash {0}", prcs.StartInfo.Arguments + "`.");
+			prcs.Start();
+			prcs.WaitForExit();
+		}
     }
 
     internal static void QuitWithConfirmation()

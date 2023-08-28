@@ -13,15 +13,16 @@ internal class FinishedWidget : MainWidget
     List<(string ID, string Text, bool IsChecked, Func<bool>? Condition)> Options = new List<(string ID, string Text, bool Checked, Func<bool>? Condition)>()
     {
         ("launch", $"Launch {VersionMetadata.ProgramDisplayName}", true, null),
-        ("shortcut", $"Create Desktop shortcut", true, () => Graphics.Platform == Platform.Windows),
-        ("startmenu", $"Create Start Menu shortcut", true, null),
+        ("shortcut", $"Create Desktop shortcut", true, () => Graphics.Platform == odl.Platform.Windows),
+        ("startmenu", $"Create Start Menu shortcut", true, () => Graphics.Platform == odl.Platform.Windows),
+        ("openfolder", $"Open program folder", false, () => Graphics.Platform == odl.Platform.Linux)
     };
 
     public FinishedWidget(IContainer parent, StepWidget stepWidget) : base(parent, stepWidget)
     {
         SetBackgroundColor(SystemColors.LightBorderFiller);
         Label infoLabel = new Label(this);
-        infoLabel.SetFont(Font.Get("Arial", 12));
+        infoLabel.SetFont(Program.Font);
         infoLabel.SetText($"Click Finish to exit Setup.");
         infoLabel.SetBlendMode(BlendMode.Blend);
         infoLabel.SetHDocked(true);
@@ -29,7 +30,7 @@ internal class FinishedWidget : MainWidget
 
         foreach (string fileAssoc in VersionMetadata.ProgramFileAssociations)
         {
-            Options.Add((fileAssoc, $"Associate {fileAssoc} files with {VersionMetadata.ProgramDisplayName}", false, null));
+            Options.Add((fileAssoc, $"Associate {fileAssoc} files with {VersionMetadata.ProgramDisplayName}", false, () => Graphics.Platform == odl.Platform.Windows));
         }
 
         // Remove all options that do not meet their conditions
@@ -39,7 +40,7 @@ internal class FinishedWidget : MainWidget
         {
             CheckBox box = new CheckBox(this);
             box.SetPadding(40, 50 + i * 25);
-            box.SetFont(Font.Get("Arial", 12));
+            box.SetFont(Program.Font);
             box.SetText(Options[i].Text);
             box.SetBlendMode(BlendMode.Blend);
             box.SetChecked(Options[i].IsChecked);

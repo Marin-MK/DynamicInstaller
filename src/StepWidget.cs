@@ -19,7 +19,7 @@ internal class StepWidget : Widget
     {
         SetBackgroundColor(SystemColors.LightBorderFiller);
         cancelButton = new Button(this);
-        cancelButton.SetFont(Font.Get("Arial", 12));
+        cancelButton.SetFont(Program.Font);
         cancelButton.SetText("Cancel");
         cancelButton.SetBlendMode(BlendMode.Blend);
         cancelButton.SetBottomDocked(true);
@@ -28,7 +28,7 @@ internal class StepWidget : Widget
         cancelButton.SetSize(100, 30);
         cancelButton.OnPressed += _ => ClickedCancel();
         nextButton = new Button(this);
-        nextButton.SetFont(Font.Get("Arial", 12));
+        nextButton.SetFont(Program.Font);
         nextButton.SetText("Next >");
         nextButton.SetBlendMode(BlendMode.Blend);
         nextButton.SetBottomDocked(true);
@@ -37,7 +37,7 @@ internal class StepWidget : Widget
         nextButton.SetSize(100, 30);
         nextButton.OnPressed += _ => ClickedNext();
         backButton = new Button(this);
-        backButton.SetFont(Font.Get("Arial", 12));
+        backButton.SetFont(Program.Font);
         backButton.SetText("< Back");
         backButton.SetBlendMode(BlendMode.Blend);
         backButton.SetBottomDocked(true);
@@ -85,7 +85,13 @@ internal class StepWidget : Widget
             if (options.Contains("shortcut"))
             {
                 string deskDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                string shortcutPath = deskDir + "\\" + VersionMetadata.ProgramDisplayName + ".url";
+                string shortcutPath = Graphics.Platform switch
+                {
+                    odl.Platform.Windows => deskDir + "/" + VersionMetadata.ProgramDisplayName + ".url",
+                    odl.Platform.Linux => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "/Desktop",
+                    _ => throw new NotImplementedException()
+                };
+                shortcutPath = shortcutPath.Replace('\\', '/');
                 CreateShortcut(shortcutPath);
             }
             if (options.Contains("startmenu") && Graphics.Platform == Platform.Windows)
@@ -106,6 +112,15 @@ internal class StepWidget : Widget
             {
                 Program.RunExecutable();
             }
+            if (options.Contains("openfolder"))
+            {
+                Process p = new Process();
+                p.StartInfo = new ProcessStartInfo("nautilus");
+                p.StartInfo.ArgumentList.Add(Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath).Replace('\\', '/'));
+                p.StartInfo.UseShellExecute = false;
+                p.StartInfo.CreateNoWindow = true;
+                p.Start();
+            }
         }
         else if (!Program.Window.ForceClose && !Program.Window.SkipExitPrompt)
         {
@@ -119,15 +134,34 @@ internal class StepWidget : Widget
     }
 
     private void CreateShortcut(string path)
-    {
-        using (StreamWriter writer = new StreamWriter(path))
+	{
+		string app = Program.ProgramExecutablePath.Replace('\\', '/');
+        Logger.WriteLine("Creating shortcut at {0} pointing to {1}", path, app);
+		if (Graphics.Platform == odl.Platform.Windows)
         {
-            string app = Program.ProgramExecutablePath.Replace('\\', '/');
-            Logger.WriteLine("Creating shortcut at {0} pointing to {1}", path, app);
-            writer.WriteLine("[InternetShortcut]");
-            writer.WriteLine("URL=file:///" + app);
-            writer.WriteLine("IconIndex=0");
-            writer.WriteLine("IconFile=" + app);
+            using (StreamWriter writer = new StreamWriter(path))
+            {
+                Logger.WriteLine("Creating shortcut at {0} pointing to {1}", path, app);
+                writer.WriteLine("[InternetShortcut]");
+                writer.WriteLine("URL=file:///" + app);
+                writer.WriteLine("IconIndex=0");
+                writer.WriteLine("IconFile=" + app);
+            }
+        }
+        else if (Graphics.Platform == odl.Platform.Linux)
+        {
+            // Unused on Linux as it is impossible to retrieve a Desktop path
+            // when the process is being run by root via sudo. So it's impossible
+            // to create a desktop shortcut when the active user has no desktop.
+            Process p = new Process();
+            p.StartInfo = new ProcessStartInfo("ln");
+            p.StartInfo.ArgumentList.Add("-s");
+            p.StartInfo.ArgumentList.Add(app);
+            p.StartInfo.ArgumentList.Add(path);
+            p.StartInfo.Verb = "sudo";
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.CreateNoWindow = true;
+            p.Start();
         }
     }
 

@@ -12,7 +12,7 @@ internal class WelcomeWidget : MainWidget
     {
         SetBackgroundColor(SystemColors.LightBorderFiller);
         MultilineLabel headerLabel = new MultilineLabel(this);
-        headerLabel.SetFont(Font.Get("Arial", 12));
+        headerLabel.SetFont(Program.Font);
         string text = "";
         if (!string.IsNullOrEmpty(Program.ExistingVersion))
         {

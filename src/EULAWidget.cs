@@ -12,7 +12,7 @@ internal class EULAWidget : MainWidget
     {
         SetBackgroundColor(SystemColors.LightBorderFiller);
         MultilineLabel infoLabel = new MultilineLabel(this);
-        infoLabel.SetFont(Font.Get("Arial", 12));
+        infoLabel.SetFont(Program.Font);
         infoLabel.SetText("Please read the following License Agreement. You must accept the terms of this agreement before continuing with the installation.");
         infoLabel.SetBlendMode(BlendMode.Blend);
         infoLabel.SetHDocked(true);
@@ -26,7 +26,7 @@ internal class EULAWidget : MainWidget
         Box.SetLineHeight(22);
 
         RadioBox acceptBox = new RadioBox(this);
-        acceptBox.SetFont(Font.Get("Arial", 12));
+        acceptBox.SetFont(Program.Font);
         acceptBox.SetText("I accept the agreement");
         acceptBox.SetBottomDocked(true);
         acceptBox.SetPadding(40, 0, 0, 48);
@@ -37,7 +37,7 @@ internal class EULAWidget : MainWidget
             stepWidget.SetNextStatus(acceptBox.Checked);
         };
         RadioBox rejectBox = new RadioBox(this);
-        rejectBox.SetFont(Font.Get("Arial", 12));
+        rejectBox.SetFont(Program.Font);
         rejectBox.SetText("I do not accept the agreement");
         rejectBox.SetChecked(true);
         rejectBox.SetBottomDocked(true);
