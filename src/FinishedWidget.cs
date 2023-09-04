@@ -13,9 +13,9 @@ internal class FinishedWidget : MainWidget
     List<(string ID, string Text, bool IsChecked, Func<bool>? Condition)> Options = new List<(string ID, string Text, bool Checked, Func<bool>? Condition)>()
     {
         ("launch", $"Launch {VersionMetadata.ProgramDisplayName}", true, null),
-        ("shortcut", $"Create Desktop shortcut", true, () => Graphics.Platform == odl.Platform.Windows),
-        ("startmenu", $"Create Start Menu shortcut", true, () => Graphics.Platform == odl.Platform.Windows),
-        ("openfolder", $"Open program folder", false, () => Graphics.Platform == odl.Platform.Linux)
+        ("shortcut", $"Create Desktop shortcut", true, () => ODL.OnWindows),
+        ("startmenu", $"Create Start Menu shortcut", true, () => ODL.OnWindows),
+        ("openfolder", $"Open program folder", false, () => ODL.OnLinux)
     };
 
     public FinishedWidget(IContainer parent, StepWidget stepWidget) : base(parent, stepWidget)
@@ -30,7 +30,7 @@ internal class FinishedWidget : MainWidget
 
         foreach (string fileAssoc in VersionMetadata.ProgramFileAssociations)
         {
-            Options.Add((fileAssoc, $"Associate {fileAssoc} files with {VersionMetadata.ProgramDisplayName}", false, () => Graphics.Platform == odl.Platform.Windows));
+            Options.Add((fileAssoc, $"Associate {fileAssoc} files with {VersionMetadata.ProgramDisplayName}", false, () => ODL.OnWindows));
         }
 
         // Remove all options that do not meet their conditions

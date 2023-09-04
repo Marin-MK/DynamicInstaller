@@ -2,6 +2,7 @@
 using amethyst;
 using NativeLibraryLoader;
 using odl;
+
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -11,17 +12,19 @@ namespace DynamicInstaller.src;
 public class Program
 {
     internal static string? DependencyFolder;
-    internal static string ProgramLaunchFile => VersionMetadata.ProgramLaunchFile[Graphics.Platform switch
+    internal static string ProgramLaunchFile => VersionMetadata.ProgramLaunchFile[ODL.Platform switch
     {
         odl.Platform.Windows => "windows",
         odl.Platform.Linux => "linux",
+        odl.Platform.MacOS => "macos",
         _ => throw new NotImplementedException(),
     }];
     internal static string ProgramExecutablePath => Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath, ProgramLaunchFile).Replace('/', '\\');
-    internal static string InstallerInstallFilename => VersionMetadata.InstallerInstallFilename[Graphics.Platform switch
+    internal static string InstallerInstallFilename => VersionMetadata.InstallerInstallFilename[ODL.Platform switch
     {
         odl.Platform.Windows => "windows",
         odl.Platform.Linux => "linux",
+        odl.Platform.MacOS => "macos",
         _ => throw new NotImplementedException()
     }];
     internal static string? ExistingVersion;
@@ -35,7 +38,7 @@ public class Program
 
 	public static void Main(string[] args)
     {
-    	if (Graphics.Platform == odl.Platform.Linux)
+    	if (ODL.Platform == odl.Platform.Linux)
         {
             NativeLibrary libc = NativeLibrary.Load("libc.so.6");
             geteuid = libc.GetFunction<GetEUID>("geteuid");
@@ -47,7 +50,7 @@ public class Program
         }
 
         
-        string appDataFolder = Path.Combine(MKUtils.MKUtils.AppDataFolder, Graphics.Platform == odl.Platform.Windows ? "RPG Studio MK" : ".rpg-studio-mk");
+        string appDataFolder = Path.Combine(MKUtils.MKUtils.AppDataFolder, ODL.OnLinux ? ".rpg-studio-mk" : "RPG Studio MK");
         MakeFolderAsNonRoot(appDataFolder);
 
 #if DEBUG
@@ -56,17 +59,18 @@ public class Program
         string updaterLogPath = Path.Combine(appDataFolder, "updater-log.txt").Replace('\\', '/');
         Logger.Start(updaterLogPath);
 #endif
+        ODL.Logger = Logger.Instance;
 
 		Logger.WriteLine("AppDataFolder: {0}", MKUtils.MKUtils.AppDataFolder);
 
         bool AutomaticUpdate = args.Length == 1 && args[0] == "--automatic-update";
         Logger.WriteLine("Process Path: {0}", Environment.ProcessPath);
         string installerVersion = null;
-        if (Graphics.Platform == odl.Platform.Windows)
+        if (ODL.OnWindows)
         {
             installerVersion = FileVersionInfo.GetVersionInfo(Environment.ProcessPath)?.ProductVersion ?? "0";
         }
-        else if (Graphics.Platform == odl.Platform.Linux)
+        else if (ODL.OnLinux || ODL.OnMacOS)
         {
             string exeParent = Path.GetDirectoryName(Environment.ProcessPath);
             string versionFile = Path.Combine(exeParent, "VERSION").Replace('\\', '/');
@@ -94,7 +98,7 @@ public class Program
                 Logger.WriteLine($"Copying installer from '{arg1}' to '{arg2}'.");
                 if (!Directory.Exists(arg2Parent)) Directory.CreateDirectory(arg2Parent);
                 File.Copy(arg1, arg2);
-                if (Graphics.Platform == odl.Platform.Linux)
+                if (ODL.OnLinux || ODL.OnMacOS)
                 {
                     // Write version file
                     // We make a big assumption here; that the installer being run is the latest version of the installer.
@@ -112,13 +116,10 @@ public class Program
                 return;
             }
             Logger.WriteLine("Starting Amethyst...");
-            Font.AddFontPath("/usr/share/fonts");
-            Font.AddFontPath("/usr/share/fonts/truetype");
-            Font.AddFontPath("/usr/share/fonts/truetype/ubuntu");
             Amethyst.Start(GetPathInfo(), false, false);
             string fontName = null;
             string boldFontName = null;
-            switch (Graphics.Platform)
+            switch (ODL.Platform)
             {
                 case odl.Platform.Windows:
                     fontName = "Arial";
@@ -128,11 +129,15 @@ public class Program
                     fontName = "Ubuntu-R";
                     boldFontName = "Ubuntu-B";
                     break;
+                case odl.Platform.MacOS:
+                    fontName = ODL.FontResolver.ResolveFilenames("Georgia", "Verdana", "Comic Sans MS")!;
+                    boldFontName = ODL.FontResolver.ResolveFilenames("Georgia Bold", "Verdana Bold", "Comic Sans MS Bold")!;
+                    break;
                 default:
                     throw new NotImplementedException();
             }
-            Program.Font = odl.Font.Get(fontName, 12);
-            Program.BoldFont = odl.Font.Get(boldFontName, 12);
+            Program.Font = FontCache.GetOrCreate(fontName, 12);
+            Program.BoldFont = FontCache.GetOrCreate(boldFontName, 12);
 
             Logger.WriteLine("Creating window...");
             Window = new InstallerWindow(800, AutomaticUpdate ? 240 : 480);
@@ -169,7 +174,7 @@ public class Program
     public static void MakeFolderAsNonRoot(string folder)
     {
         if (Directory.Exists(folder)) return;
-        if (Graphics.Platform == odl.Platform.Linux && IsLinuxAdmin())
+        if (ODL.OnLinux && IsLinuxAdmin())
         {
             Process prcs = new Process();
             prcs.StartInfo = new ProcessStartInfo("runuser");
@@ -192,7 +197,7 @@ public class Program
         string folder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.ProgramInstallPath);
         Logger.WriteLine("No existing installation found, program folder does not exist yet at {0}", folder);
         if (!Directory.Exists(folder)) return null;
-        if (Graphics.Platform == odl.Platform.Windows)
+        if (ODL.OnWindows)
         {
             // Read ProductVersion from the assembly
             string execFile = Path.Combine(folder, ProgramLaunchFile).Replace('\\', '/');
@@ -206,9 +211,9 @@ public class Program
                 return currentProgramVersion;
             }
         }
-        else if (Graphics.Platform == odl.Platform.Linux)
+        else if (ODL.OnLinux || ODL.OnMacOS)
         {
-            // Linux cannot read ProductVersion from assemblies, so we use a version file instead
+            // Linux/macOS cannot read ProductVersion from assemblies, so we use a version file instead
             string versionFile = Path.Combine(folder, "VERSION").Replace('\\', '/');
             Logger.WriteLine("Searching for version file at {0}...", versionFile);
             if (File.Exists(versionFile))
@@ -236,10 +241,11 @@ public class Program
         {
             if (!InstallDependencies()) return false;
         }
-        DependencyFolder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.CoreLibraryPath, "lib", Graphics.Platform switch
+        DependencyFolder = Path.Combine(MKUtils.MKUtils.ProgramFilesPath, VersionMetadata.CoreLibraryPath, "lib", ODL.Platform switch
         {
             odl.Platform.Windows => "windows",
             odl.Platform.Linux => "linux",
+            odl.Platform.MacOS => "macos",
             _ => throw new NotImplementedException()
         }).Replace('\\', '/');
         return true;
@@ -250,7 +256,6 @@ public class Program
         PathPlatformInfo windows = new PathPlatformInfo(NativeLibraryLoader.Platform.Windows);
         windows.AddPath("libsdl2", DependencyFolder + "/SDL2.dll");
         windows.AddPath("libz", DependencyFolder + "/zlib1.dll");
-        windows.AddPath("libsdl2_image", DependencyFolder + "/SDL2_image.dll");
         windows.AddPath("libpng", DependencyFolder + "/libpng16-16.dll");
         windows.AddPath("libsdl2_ttf", DependencyFolder + "/SDL2_ttf.dll");
         windows.AddPath("libfreetype", DependencyFolder + "/libfreetype-6.dll");
@@ -258,11 +263,18 @@ public class Program
         PathPlatformInfo linux = new PathPlatformInfo(NativeLibraryLoader.Platform.Linux);
         linux.AddPath("libsdl2", DependencyFolder + "/SDL2.so");
         linux.AddPath("libz", DependencyFolder + "/libz.so");
-        linux.AddPath("libsdl2_image", DependencyFolder + "/SDL2_image.so");
         linux.AddPath("libpng", DependencyFolder + "/libpng16-16.so");
         linux.AddPath("libsdl2_ttf", DependencyFolder + "/SDL2_ttf.so");
         linux.AddPath("libfreetype", DependencyFolder + "/libfreetype-6.so");
-        return PathInfo.Create(windows, linux);
+
+        PathPlatformInfo macos = new PathPlatformInfo(NativeLibraryLoader.Platform.MacOS);
+        macos.AddPath("libsdl2", DependencyFolder + "/SDL2.dylib");
+        macos.AddPath("libz", DependencyFolder + "/libz.dylib");
+        macos.AddPath("libpng", DependencyFolder + "/libpng.dylib");
+        macos.AddPath("libsdl2_ttf", DependencyFolder + "/SDL2_ttf.dylib");
+        macos.AddPath("libfreetype", DependencyFolder + "/libfreetype.dylib");
+
+        return PathInfo.Create(windows, linux, macos);
     }
 
     private static bool HasAllDependencies()
@@ -280,11 +292,12 @@ public class Program
         return true;
     }
 
-    private static string PlatformString => Graphics.Platform switch
+    private static string PlatformString => ODL.Platform switch
     {
         odl.Platform.Windows => "windows",
         odl.Platform.Linux => "linux",
-        _ => "unknown"
+        odl.Platform.MacOS => "macos",
+        _ => throw new NotImplementedException()
     };
 
     private static bool InstallDependencies()
@@ -311,7 +324,7 @@ public class Program
     internal static bool SetFileAssociation(string fileAssoc)
     {
         Logger.WriteLine($"Setting file association for '{fileAssoc}'");
-        if (Graphics.Platform != odl.Platform.Windows) return false;
+        if (!ODL.OnWindows) return false;
         string assocOutput = GetCommandOutput($"assoc {fileAssoc}");
         Match assocMatch = Regex.Match(assocOutput, $@"{fileAssoc.Replace(".", "\\.")}=(.+)$");
         string ftypeName = "";
@@ -336,7 +349,7 @@ public class Program
     internal static string GetCommandOutput(string command)
     {
         Logger.WriteLine($"Getting command output for '{command}'...");
-        if (Graphics.Platform != odl.Platform.Windows) throw new PlatformNotSupportedException();
+        if (!ODL.OnWindows) throw new PlatformNotSupportedException();
         ProcessStartInfo procStartInfo = new ProcessStartInfo("cmd", "/c " + command);
         procStartInfo.RedirectStandardOutput = true;
         procStartInfo.UseShellExecute = false;
@@ -350,24 +363,24 @@ public class Program
     internal static void RunExecutable()
     {
         Logger.WriteLine("Launching program...");
-        string path = Graphics.Platform switch
+        string path = ODL.Platform switch
         {
         	odl.Platform.Windows => ProgramExecutablePath.Replace('/', '\\'),
-        	odl.Platform.Linux => ProgramExecutablePath.Replace('\\', '/'),
+        	odl.Platform.Linux or odl.Platform.MacOS => ProgramExecutablePath.Replace('\\', '/'),
         	_ => throw new NotImplementedException()
         };
-        if (Graphics.Platform == odl.Platform.Windows)
+        if (ODL.OnWindows || ODL.OnMacOS)
         {
             Process proc = new Process();
             proc.StartInfo = new ProcessStartInfo(path);
             proc.StartInfo.UseShellExecute = false;
             proc.Start();
         }
-        else if (Graphics.Platform == odl.Platform.Linux)
+        else if (ODL.OnLinux)
         {
 			Process prcs = new Process();
 			prcs.StartInfo = new ProcessStartInfo("/bin/bash");
-            string user = Environment.GetEnvironmentVariable("SUDO_USER");
+            string user = Environment.GetEnvironmentVariable("SUDO_USER")!;
 			prcs.StartInfo.Arguments = $"-c \"su {user} -c \\\"'{path}'\\\"\"";
             Logger.WriteLine("Launching the program with `bash {0}", prcs.StartInfo.Arguments + "`.");
 			prcs.Start();

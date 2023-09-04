@@ -85,7 +85,7 @@ internal class StepWidget : Widget
             if (options.Contains("shortcut"))
             {
                 string deskDir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                string shortcutPath = Graphics.Platform switch
+                string shortcutPath = ODL.Platform switch
                 {
                     odl.Platform.Windows => deskDir + "/" + VersionMetadata.ProgramDisplayName + ".url",
                     odl.Platform.Linux => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "/Desktop",
@@ -94,7 +94,7 @@ internal class StepWidget : Widget
                 shortcutPath = shortcutPath.Replace('\\', '/');
                 CreateShortcut(shortcutPath);
             }
-            if (options.Contains("startmenu") && Graphics.Platform == Platform.Windows)
+            if (options.Contains("startmenu") && ODL.OnWindows)
             {
                 string startMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
                 string shortcutPath = Path.Combine(startMenuPath, "Programs", VersionMetadata.ProgramDisplayName + ".lnk").Replace('/', '\\');
@@ -137,7 +137,7 @@ internal class StepWidget : Widget
 	{
 		string app = Program.ProgramExecutablePath.Replace('\\', '/');
         Logger.WriteLine("Creating shortcut at {0} pointing to {1}", path, app);
-		if (Graphics.Platform == odl.Platform.Windows)
+		if (ODL.OnWindows)
         {
             using (StreamWriter writer = new StreamWriter(path))
             {
@@ -148,7 +148,7 @@ internal class StepWidget : Widget
                 writer.WriteLine("IconFile=" + app);
             }
         }
-        else if (Graphics.Platform == odl.Platform.Linux)
+        else if (ODL.OnLinux)
         {
             // Unused on Linux as it is impossible to retrieve a Desktop path
             // when the process is being run by root via sudo. So it's impossible

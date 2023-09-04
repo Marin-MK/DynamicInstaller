@@ -63,10 +63,11 @@ internal class InstallationWidget : MainWidget
         try
         {
             Logger.WriteLine("Downloading program files...");
-            success = Downloader.DownloadFile(VersionMetadata.ProgramDownloadLink[Graphics.Platform switch
+            success = Downloader.DownloadFile(VersionMetadata.ProgramDownloadLink[ODL.Platform switch
             {
                 Platform.Windows => "windows",
                 Platform.Linux => "linux",
+                Platform.MacOS => "macos",
                 _ => throw new NotImplementedException()
             }], tempFile, null, dcm);
         }
@@ -128,7 +129,7 @@ internal class InstallationWidget : MainWidget
                 File.Delete(tempFile);
                 if (Program.Window.Disposed) return;
                 Logger.WriteLine("Successfully extracted all files.");
-                if (Graphics.Platform == Platform.Linux)
+                if (ODL.OnLinux || ODL.OnMacOS)
                 {
                     string versionFile = Path.Combine(destFolder, "VERSION");
 					Logger.WriteLine("Writing version file with content {0} to {1}", VersionMetadata.ProgramVersion, versionFile);
@@ -136,10 +137,11 @@ internal class InstallationWidget : MainWidget
                     Logger.WriteLine("Ensuring the executable is marked as executable...");
                     Process eprc = new Process();
                     eprc.StartInfo = new ProcessStartInfo("chmod");
-                    string executablePath = Path.Combine(destFolder, VersionMetadata.ProgramLaunchFile[Graphics.Platform switch
+                    string executablePath = Path.Combine(destFolder, VersionMetadata.ProgramLaunchFile[ODL.Platform switch
                     {
                     	odl.Platform.Windows => "windows",
                     	odl.Platform.Linux => "linux",
+                        odl.Platform.MacOS => "macos",
                     	_ => throw new NotImplementedException()
                     }]).Replace('\\', '/');
                     eprc.StartInfo.ArgumentList.Add("+x");
