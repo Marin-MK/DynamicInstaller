@@ -131,7 +131,7 @@ internal class InstallationWidget : MainWidget
                 Logger.WriteLine("Successfully extracted all files.");
                 if (ODL.OnLinux || ODL.OnMacOS)
                 {
-                    string versionFile = Path.Combine(destFolder, "VERSION");
+                    string versionFile = Path.Combine(destFolder, "VERSION").Replace('\\', '/');
 					Logger.WriteLine("Writing version file with content {0} to {1}", VersionMetadata.ProgramVersion, versionFile);
                     File.WriteAllText(versionFile, VersionMetadata.ProgramVersion);
                     Logger.WriteLine("Ensuring the executable is marked as executable...");

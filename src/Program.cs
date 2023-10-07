@@ -38,7 +38,7 @@ public class Program
 
 	public static void Main(string[] args)
     {
-    	if (ODL.Platform == odl.Platform.Linux)
+		if (ODL.Platform == odl.Platform.Linux)
         {
             NativeLibrary libc = NativeLibrary.Load("libc.so.6");
             geteuid = libc.GetFunction<GetEUID>("geteuid");
@@ -126,10 +126,10 @@ public class Program
                     boldFontName = "arialbd";
                     break;
                 case odl.Platform.Linux:
-                    fontName = "Ubuntu-R";
-                    boldFontName = "Ubuntu-B";
+                    fontName = ODL.FontResolver.ResolveFilenames("Ubuntu-R", "LiberationSans-Regular", "OpenSans-Regular")!;
+                    boldFontName = ODL.FontResolver.ResolveFilenames("Ubuntu-B", "LiberationSans-Bold", "OpenSans-Bold")!;
                     break;
-                case odl.Platform.MacOS:
+				case odl.Platform.MacOS:
                     fontName = ODL.FontResolver.ResolveFilenames("Georgia", "Verdana", "Comic Sans MS")!;
                     boldFontName = ODL.FontResolver.ResolveFilenames("Georgia Bold", "Verdana Bold", "Comic Sans MS Bold")!;
                     break;
